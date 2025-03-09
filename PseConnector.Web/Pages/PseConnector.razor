@@ -1,0 +1,68 @@
+﻿@page "/pseConnector"
+@using System.Globalization
+@using global::PseConnector.Data.Endpoints.Rce
+@inject PseHttpClientService PseHttpClient
+
+<PageTitle>PSE Connector</PageTitle>
+
+<h1>PSE api test</h1>
+<button class="btn btn-primary" @onclick="GetPseData">Get PSE data</button>
+<br />
+<br />
+Result:
+<br />
+<div class="container-fluid overflow-x-auto" style="max-width: 1200px">
+    <LineChart @ref="_lineChart" />
+</div>
+
+@code {
+    private LineChart _lineChart = default!;
+    private LineChartOptions _lineChartOptions = default!;
+    private ChartData _chartData = default!;
+
+    protected override void OnInitialized()
+    {
+        _lineChartOptions = new LineChartOptions
+            {
+                IndexAxis = "x",
+                Interaction = new Interaction { Mode = InteractionMode.Index, Intersect = false },
+                Responsive = true,
+            };
+
+        _lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "PLN", Display = true };
+    }
+
+    private async Task GetPseData()
+    {
+        string result = await PseHttpClient.GetStringAsync("rce-pln?$filter=doba%20eq%20'2025-03-01'");
+        RceData[]? rceData = RceReader.rceData(result);
+
+        var color = ColorUtility.CategoricalTwelveColors[0].ToColor();
+
+        _chartData = new ChartData
+            {
+                Labels = rceData.Select(d => d.Udtczas.ToString(CultureInfo.InvariantCulture)).ToList(),
+                Datasets =
+                [
+                    new LineChartDataset
+                {
+                    Label = $"RCE [PLN]",
+                    Data = rceData.Select(d => (double?)d.RcePln).ToList(),
+                    BackgroundColor = color.ToRgbaString(),
+                    BorderColor = color.ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                }
+                ]
+            };
+        try
+        {
+            await _lineChart.InitializeAsync(_chartData, _lineChartOptions);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+    }
+}
