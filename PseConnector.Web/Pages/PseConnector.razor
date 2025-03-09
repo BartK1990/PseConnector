@@ -3,15 +3,22 @@
 @using global::PseConnector.Data.Endpoints.Rce
 @inject PseHttpClientService PseHttpClient
 
-<PageTitle>PSE Connector</PageTitle>
+<PageTitle>PSE Connector - RCE</PageTitle>
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="GetPseData">Pobierz dane</button>
+</div>
+<div>
+    <div class="mb-3" style="width: 200px;">
+        <DateInput TValue="DateOnly" @bind-Value="@dateFrom" Placeholder="Data" />
+    </div>
+    <div class="mb-3" style="width: 200px;">
+        <DateInput TValue="DateOnly" @bind-Value="@dateTo" Placeholder="Data" />
+    </div>
+</div>
+<div class="mb-3">Wybrany zakres dat: @dateFrom - @dateTo</div>
+<div>@_error</div>
 
-<h1>PSE api test</h1>
-<button class="btn btn-primary" @onclick="GetPseData">Get PSE data</button>
-<br />
-<br />
-Result:
-<br />
-<div class="container-fluid overflow-x-auto" style="max-width: 1200px">
+<div class="container-fluid overflow-x-auto" style="float: left; max-width: 1200px;">
     <LineChart @ref="_lineChart" />
 </div>
 
@@ -20,33 +27,55 @@ Result:
     private LineChartOptions _lineChartOptions = default!;
     private ChartData _chartData = default!;
 
-    protected override void OnInitialized()
+    private DateOnly dateFrom = DateOnly.FromDateTime(DateTime.Now);
+    private DateOnly dateTo = DateOnly.FromDateTime(DateTime.Now);
+
+    private string _error = string.Empty;
+
+    protected override async Task OnInitializedAsync()
     {
         _lineChartOptions = new LineChartOptions
-            {
-                IndexAxis = "x",
-                Interaction = new Interaction { Mode = InteractionMode.Index, Intersect = false },
-                Responsive = true,
-            };
+        {
+            IndexAxis = "x",
+            Interaction = new Interaction { Mode = InteractionMode.Index, Intersect = false },
+            Responsive = true,
+        };
 
         _lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "PLN", Display = true };
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await _lineChart.InitializeAsync(new ChartData { Datasets = [] }, _lineChartOptions);
+
+            }
+            catch (Exception e)
+            {
+                _error = e.Message;
+            }
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
     private async Task GetPseData()
     {
-        string result = await PseHttpClient.GetStringAsync("rce-pln?$filter=doba%20eq%20'2025-03-01'");
+        string result = await PseHttpClient.GetStringAsync($"rce-pln?$first=10000&$filter=doba%20ge%20'{dateFrom.ToString("yyyy-MM-dd")}'%20and%20doba%20le%20'{dateTo.ToString("yyyy-MM-dd")}'");
         RceData[]? rceData = RceReader.rceData(result);
 
         var color = ColorUtility.CategoricalTwelveColors[0].ToColor();
 
         _chartData = new ChartData
             {
-                Labels = rceData.Select(d => d.Udtczas.ToString(CultureInfo.InvariantCulture)).ToList(),
+                Labels = rceData.Select(d => d.Udtczas.ToString(CultureInfo.CurrentCulture)).ToList(),
                 Datasets =
                 [
                     new LineChartDataset
                 {
-                    Label = $"RCE [PLN]",
+                    Label = "RCE [PLN]",
                     Data = rceData.Select(d => (double?)d.RcePln).ToList(),
                     BackgroundColor = color.ToRgbaString(),
                     BorderColor = color.ToRgbString(),
@@ -55,14 +84,6 @@ Result:
                 }
                 ]
             };
-        try
-        {
-            await _lineChart.InitializeAsync(_chartData, _lineChartOptions);
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-            throw;
-        }
+        await _lineChart.UpdateAsync(_chartData, _lineChartOptions);
     }
 }
