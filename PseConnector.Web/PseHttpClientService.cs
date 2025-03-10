@@ -8,4 +8,9 @@ public class PseHttpClientService(HttpClient _httpClient)
     {
         return _httpClient.GetStringAsync(url);
     }
+
+    public Task<T?> GetFromJsonAsync<T>(string url)
+    {
+        return _httpClient.GetFromJsonAsync<T>(url);
+    }
 }

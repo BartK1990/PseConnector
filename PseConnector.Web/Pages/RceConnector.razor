@@ -1,22 +1,24 @@
-﻿@page "/pseConnector"
+﻿@page "/pse-connector-rce"
 @using System.Globalization
 @using global::PseConnector.Data.Endpoints.Rce
+@using Microsoft.FSharp.Core
+@using global::PseConnector.Web.Components
+@using PseConnector.Web.Models
 @inject PseHttpClientService PseHttpClient
 
-<PageTitle>PSE Connector - RCE</PageTitle>
+<PageTitle>PSE Connector - RCE-PLN</PageTitle>
+
+<h1>PSE Connector - Rynkowa cena energii elektrycznej (RCE-PLN)</h1>
+
+<PseChartInput 
+@bind-DateFrom="@_dateFrom"
+@bind-DateTo="@_dateTo"
+@bind-Limit="@_limit"
+@bind-Error="@_error"/>
+
 <div class="mb-3">
     <button class="btn btn-primary" @onclick="GetPseData">Pobierz dane</button>
 </div>
-<div>
-    <div class="mb-3" style="width: 200px;">
-        <DateInput TValue="DateOnly" @bind-Value="@dateFrom" Placeholder="Data" />
-    </div>
-    <div class="mb-3" style="width: 200px;">
-        <DateInput TValue="DateOnly" @bind-Value="@dateTo" Placeholder="Data" />
-    </div>
-</div>
-<div class="mb-3">Wybrany zakres dat: @dateFrom - @dateTo</div>
-<div>@_error</div>
 
 <div class="container-fluid overflow-x-auto" style="float: left; max-width: 1200px;">
     <LineChart @ref="_lineChart" />
@@ -27,12 +29,12 @@
     private LineChartOptions _lineChartOptions = default!;
     private ChartData _chartData = default!;
 
-    private DateOnly dateFrom = DateOnly.FromDateTime(DateTime.Now);
-    private DateOnly dateTo = DateOnly.FromDateTime(DateTime.Now);
-
+    private DateOnly _dateFrom = DateOnly.FromDateTime(DateTime.Now);
+    private DateOnly _dateTo = DateOnly.FromDateTime(DateTime.Now);
+    private int _limit = 1000;
     private string _error = string.Empty;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
         _lineChartOptions = new LineChartOptions
         {
@@ -42,6 +44,8 @@
         };
 
         _lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "PLN", Display = true };
+
+        return Task.CompletedTask;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -56,6 +60,7 @@
             catch (Exception e)
             {
                 _error = e.Message;
+                return;
             }
         }
         await base.OnAfterRenderAsync(firstRender);
@@ -63,20 +68,44 @@
 
     private async Task GetPseData()
     {
-        string result = await PseHttpClient.GetStringAsync($"rce-pln?$first=10000&$filter=doba%20ge%20'{dateFrom.ToString("yyyy-MM-dd")}'%20and%20doba%20le%20'{dateTo.ToString("yyyy-MM-dd")}'");
-        RceData[]? rceData = RceReader.rceData(result);
+        const string endpoint = "rce-pln";
+        try
+        {
+            // string result = await PseHttpClient
+            //     .GetStringAsync($"{endpoint}?$first={_limit}&$filter=doba%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20doba%20le%20'{_dateTo:yyyy-MM-dd}'");
+            // FSharpResult<RcePlnData[], string> rceDataResult = RcePlnReader.data(result);
+            // if (rceDataResult.IsError)
+            // {
+            //     _error = rceDataResult.ErrorValue;
+            //     return;
+            // }
+            // await UpdateLineChart(rceDataResult.ResultValue);
 
+            RcePlnDataCs? result = await PseHttpClient.GetFromJsonAsync<RcePlnDataCs>(
+                $"{endpoint}?$first={_limit}&$filter=doba%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20doba%20le%20'{_dateTo:yyyy-MM-dd}'");
+            if (result is not null)
+            {
+                await UpdateLineChart(result.value);
+            }
+        }
+        catch (Exception e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private async Task UpdateLineChart(List<RcePlnDataCsValue> data)
+    {
         var color = ColorUtility.CategoricalTwelveColors[0].ToColor();
-
         _chartData = new ChartData
             {
-                Labels = rceData.Select(d => d.Udtczas.ToString(CultureInfo.CurrentCulture)).ToList(),
+                Labels = data.Select(d => d.udtczas.ToString(CultureInfo.CurrentCulture)).ToList(),
                 Datasets =
                 [
                     new LineChartDataset
                 {
                     Label = "RCE [PLN]",
-                    Data = rceData.Select(d => (double?)d.RcePln).ToList(),
+                    Data = data.Select(d => (double?)d.rce_pln).ToList(),
                     BackgroundColor = color.ToRgbaString(),
                     BorderColor = color.ToRgbString(),
                     PointRadius = [1],
@@ -86,4 +115,5 @@
             };
         await _lineChart.UpdateAsync(_chartData, _lineChartOptions);
     }
+
 }

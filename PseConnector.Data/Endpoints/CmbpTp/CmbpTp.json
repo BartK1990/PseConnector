@@ -1,0 +1,22 @@
+﻿{
+  "value": [
+    {
+      "cmbp": 37.10000,
+      "doba": "2025-03-01",
+      "onmb": "00 - 01",
+      "udtczas": "2025-03-01 01:00:00",
+      "typ_rezerwy": "FCR_D",
+      "business_date": "2025-03-01",
+      "source_datetime": "2025-02-28 09:10:15.900"
+    },
+    {
+      "cmbp": null,
+      "doba": "2025-03-01",
+      "onmb": "00 - 01",
+      "udtczas": "2025-03-01 01:00:00",
+      "typ_rezerwy": "FCR_D",
+      "business_date": "2025-03-01",
+      "source_datetime": "2025-02-28 09:10:15.900"
+    }
+  ]
+}

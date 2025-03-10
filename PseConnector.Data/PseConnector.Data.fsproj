@@ -7,13 +7,15 @@
 
   <ItemGroup>
     <None Include="PseTest.http" />
-    <Compile Include="Endpoints\Rce\RceReader.fs" />
-    <Content Include="Endpoints\Rce\Rce.json">
+    <Compile Include="Endpoints\CmbpTp\CmbpTpReader.fs" />
+    <Content Include="Endpoints\CmbpTp\CmbpTp.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Compile Include="Endpoints\RcePln\RcePlnReader.fs" />
+    <Content Include="Endpoints\RcePln\RcePln.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
-
-  <ItemGroup />
 
   <ItemGroup>
     <PackageReference Include="FSharp.Data" Version="6.4.1" />

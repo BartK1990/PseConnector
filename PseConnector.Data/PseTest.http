@@ -1,7 +1,7 @@
 GET https://api.raporty.pse.pl/api/cor-rozl?$filter=doba%20eq%20'2025-03-01'
 
 ###
-
+#	Ceny mocy bilansuj¹cych nabytych w trybie podstawowym
 GET https://api.raporty.pse.pl/api/cmbp-tp?$filter=doba%20eq%20'2025-03-01'
 
 ###

@@ -1,10 +1,17 @@
-﻿using PseConnector.Data;
+﻿using PseConnector.Data.Endpoints.Rce;
 
 Console.WriteLine("Hello, World!");
 
 var httpClient = new HttpClient { BaseAddress = new Uri("https://api.raporty.pse.pl/api/") };
 
-var response = await httpClient.GetStringAsync("rce-pln?$filter=doba%20eq%20'2025-03-01'");
+var dateFrom = new DateOnly(2025, 3, 1);
+var dateTo = new DateOnly(2025, 3, 10);
+
+var rceQueryWithFilter =
+    $"rce-pln?$first=10000&$filter=doba%20ge%20'{dateFrom:yyyy-MM-dd}'%20and%20doba%20le%20'{dateTo:yyyy-MM-dd}'";
+var response = await httpClient.GetStringAsync(rceQueryWithFilter);
+
+var data = RceReader.rceData(response);
 
 Console.WriteLine(response);
 
