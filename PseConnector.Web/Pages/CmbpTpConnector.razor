@@ -1,9 +1,10 @@
 ﻿@page "/pse-connector-cmbp-tp"
 @using System.Globalization
-@using global::PseConnector.Data.Endpoints.Rce
-@using Microsoft.FSharp.Core
-@using global::PseConnector.Web.Components
+@using System.Text
 @using PseConnector.Web.Models
+@using global::PseConnector.Web.Components
+@using Newtonsoft.Json
+@inject IJSRuntime JS
 @inject PseHttpClientService PseHttpClient
 
 <PageTitle>PSE Connector - CMBP-TP</PageTitle>
@@ -18,6 +19,7 @@
 
 <div class="mb-3">
     <button class="btn btn-primary" @onclick="GetPseData">Pobierz dane</button>
+    <button class="btn btn-primary" @onclick="GetPseDataToJson">JSON</button>
 </div>
 
 <div class="container-fluid overflow-x-auto" style="float: left; max-width: 1200px;">
@@ -25,6 +27,7 @@
 </div>
 
 @code {
+    private const string Endpoint = "cmbp-tp";
     private LineChart _lineChart = default!;
     private LineChartOptions _lineChartOptions = default!;
     private ChartData _chartData = default!;
@@ -68,7 +71,6 @@
 
     private async Task GetPseData()
     {
-        const string endpoint = "cmbp-tp";
         try
         {
             // string result = await PseHttpClient
@@ -81,12 +83,34 @@
             // }
             // await UpdateLineChart(cmbpTpDataResult.ResultValue);
 
-            CmbpTpDataCs? result = await PseHttpClient.GetFromJsonAsync<CmbpTpDataCs>(
-                $"{endpoint}?$first={_limit}&$filter=doba%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20doba%20le%20'{_dateTo:yyyy-MM-dd}'");
+            var result = await GetCmbpTpDataCs();
             if (result is not null)
             {
                 await UpdateLineChart(result.value);
             }
+        }
+        catch (Exception e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private async Task<CmbpTpDataCs?> GetCmbpTpDataCs()
+    {
+        CmbpTpDataCs? result = await PseHttpClient.GetFromJsonAsync<CmbpTpDataCs>(
+            $"{Endpoint}?$first={_limit}&$filter=doba%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20doba%20le%20'{_dateTo:yyyy-MM-dd}'");
+        return result;
+    }
+
+    private async Task GetPseDataToJson()
+    {
+        try
+        {
+            CmbpTpDataCs? result = await GetCmbpTpDataCs();
+            var jsonString = JsonConvert.SerializeObject(result, Formatting.Indented);
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonString));
+            using var streamRef = new DotNetStreamReference(stream: stream);
+            await JS.InvokeVoidAsync("downloadFileFromStream", $"{Endpoint}.json", streamRef);
         }
         catch (Exception e)
         {
