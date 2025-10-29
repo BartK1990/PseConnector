@@ -11,11 +11,10 @@
 
 <h2>PSE - Ceny mocy bilansujących nabytych w trybie podstawowym (CMBP-TP)</h2>
 
-<PseChartInput 
-@bind-DateFrom="@_dateFrom"
-@bind-DateTo="@_dateTo"
-@bind-Limit="@_limit"
-@bind-Error="@_error"/>
+<PseChartInput @bind-DateFrom="@_dateFrom"
+               @bind-DateTo="@_dateTo"
+               @bind-Limit="@_limit"
+               @bind-Error="@_error" />
 
 <div class="mb-3">
     <button class="btn btn-primary" @onclick="GetPseData">Pobierz dane</button>
@@ -28,6 +27,7 @@
 
 @code {
     private const string Endpoint = "cmbp-tp";
+    private const string QueryParamBusinessDate = "business_date";
     private LineChart _lineChart = default!;
     private LineChartOptions _lineChartOptions = default!;
     private ChartData _chartData = default!;
@@ -73,16 +73,6 @@
     {
         try
         {
-            // string result = await PseHttpClient
-            //     .GetStringAsync($"{endpoint}?$first={_limit}&$filter=doba%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20doba%20le%20'{_dateTo:yyyy-MM-dd}'");
-            // FSharpResult<CmbpTpData[], string> cmbpTpDataResult = CmbpTpReader.data(result);
-            // if (cmbpTpDataResult.IsError)
-            // {
-            //     _error = cmbpTpDataResult.ErrorValue;
-            //     return;
-            // }
-            // await UpdateLineChart(cmbpTpDataResult.ResultValue);
-
             var result = await GetCmbpTpDataCs();
             if (result is not null)
             {
@@ -98,7 +88,7 @@
     private async Task<CmbpTpDataCs?> GetCmbpTpDataCs()
     {
         CmbpTpDataCs? result = await PseHttpClient.GetFromJsonAsync<CmbpTpDataCs>(
-            $"{Endpoint}?$first={_limit}&$filter=doba%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20doba%20le%20'{_dateTo:yyyy-MM-dd}'");
+            $"{Endpoint}?$first={_limit}&$filter={QueryParamBusinessDate}%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20{QueryParamBusinessDate}%20le%20'{_dateTo:yyyy-MM-dd}'");
         return result;
     }
 
@@ -120,34 +110,86 @@
 
     private async Task UpdateLineChart(List<CmbpTpDataCsValue> data)
     {
-        var grouped = data.GroupBy(d => d.typ_rezerwy);
-        var datasets = new List<IChartDataset>();
-        var colorIndex = 0;
-        foreach (IGrouping<string, CmbpTpDataCsValue> group in grouped)
+        _chartData = new ChartData
         {
-            var color = ColorUtility.CategoricalTwelveColors[colorIndex++].ToColor();
-            if (colorIndex > 11)
-            {
-                colorIndex = 0;
-            }
-
-            var dataset = new LineChartDataset
+            Labels = data.Select(d => d.dtime_utc.ToString(CultureInfo.CurrentCulture)).ToList(),
+            Datasets =
+            [
+                new LineChartDataset
                 {
-                    Label = group.Key,
-                    Data = group.Select(d => d.cmbp).ToList(),
-                    BackgroundColor = color.ToRgbaString(),
-                    BorderColor = color.ToRgbString(),
+                    Label = "FCR_D",
+                    Data = data.Select(d => d.fcr_d).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString(),
                     PointRadius = [1],
                     PointHoverRadius = [3],
-                };
-            datasets.Add(dataset);
-        }
+                },
+                new LineChartDataset
+                {
+                    Label = "FCR_G",
+                    Data = data.Select(d => d.fcr_g).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "aFRR_D",
+                    Data = data.Select(d => d.afrr_d).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[2].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[2].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "aFRR_G",
+                    Data = data.Select(d => d.afrr_g).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "mFRRd_D",
+                    Data = data.Select(d => d.mfrrd_d).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[4].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[4].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "mFRRd_G",
+                    Data = data.Select(d => d.mfrrd_g).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[5].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[5].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "RR_D",
+                    Data = data.Select(d => d.rr_d).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[6].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[6].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "RR_G",
+                    Data = data.Select(d => d.rr_g).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[7].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[7].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                }
+            ]
+        };
 
-        _chartData = new ChartData
-            {
-                Labels = data.Select(d => d.udtczas.ToString(CultureInfo.CurrentCulture)).Distinct().ToList(),
-                Datasets = datasets,
-            };
         await _lineChart.UpdateAsync(_chartData, _lineChartOptions);
     }
 

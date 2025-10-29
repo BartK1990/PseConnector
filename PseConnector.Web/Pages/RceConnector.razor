@@ -28,6 +28,7 @@
 
 @code {
     private const string Endpoint = "rce-pln";
+    private const string QueryParamBusinessDate = "business_date";
     private LineChart _lineChart = default!;
     private LineChartOptions _lineChartOptions = default!;
     private ChartData _chartData = default!;
@@ -73,16 +74,6 @@
     {
         try
         {
-            // string result = await PseHttpClient
-            //     .GetStringAsync($"{endpoint}?$first={_limit}&$filter=doba%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20doba%20le%20'{_dateTo:yyyy-MM-dd}'");
-            // FSharpResult<RcePlnData[], string> rceDataResult = RcePlnReader.data(result);
-            // if (rceDataResult.IsError)
-            // {
-            //     _error = rceDataResult.ErrorValue;
-            //     return;
-            // }
-            // await UpdateLineChart(rceDataResult.ResultValue);
-
             RcePlnDataCs? result = await GetRcePlnDataCs();
             if (result is not null)
             {
@@ -114,7 +105,7 @@
     private async Task<RcePlnDataCs?> GetRcePlnDataCs()
     {
         RcePlnDataCs? result = await PseHttpClient.GetFromJsonAsync<RcePlnDataCs>(
-            $"{Endpoint}?$first={_limit}&$filter=doba%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20doba%20le%20'{_dateTo:yyyy-MM-dd}'");
+            $"{Endpoint}?$first={_limit}&$filter={QueryParamBusinessDate}%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20{QueryParamBusinessDate}%20le%20'{_dateTo:yyyy-MM-dd}'");
         return result;
     }
 
@@ -123,7 +114,7 @@
         var color = ColorUtility.CategoricalTwelveColors[0].ToColor();
         _chartData = new ChartData
             {
-                Labels = data.Select(d => d.udtczas.ToString(CultureInfo.CurrentCulture)).ToList(),
+                Labels = data.Select(d => d.dtime_utc.ToString(CultureInfo.CurrentCulture)).ToList(),
                 Datasets =
                 [
                     new LineChartDataset

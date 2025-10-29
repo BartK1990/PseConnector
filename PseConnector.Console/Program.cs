@@ -11,8 +11,6 @@ var rceQueryWithFilter =
     $"rce-pln?$first=10000&$filter=doba%20ge%20'{dateFrom:yyyy-MM-dd}'%20and%20doba%20le%20'{dateTo:yyyy-MM-dd}'";
 var response = await httpClient.GetStringAsync(rceQueryWithFilter);
 
-var data = RceReader.rceData(response);
-
 Console.WriteLine(response);
 
 Console.WriteLine("Bye, World!");
