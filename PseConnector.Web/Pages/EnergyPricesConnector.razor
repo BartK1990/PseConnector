@@ -1,0 +1,134 @@
+@page "/pse-connector-energy-prices"
+@using System.Globalization
+@using System.Text
+@using global::PseConnector.Web.Components
+@using Newtonsoft.Json
+@using PseConnector.Web.Models
+@inject IJSRuntime JS
+@inject PseHttpClientService PseHttpClient
+
+<PageTitle>PSE Connector - Energy Prices</PageTitle>
+
+<h2>PSE - Energy Prices</h2>
+
+<PseChartInput 
+@bind-DateFrom="@_dateFrom"
+@bind-DateTo="@_dateTo"
+@bind-Limit="@_limit"
+@bind-Error="@_error"/>
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="GetPseData">Pobierz dane</button>
+    <button class="btn btn-primary" @onclick="GetPseDataToJson">JSON</button>
+</div>
+
+<div class="container-fluid overflow-x-auto" style="float: left; max-width: 1200px;">
+    <LineChart @ref="_lineChart" />
+</div>
+
+@code {
+    private const string Endpoint = "energy-prices";
+    private const string QueryParamBusinessDate = "business_date";
+    private LineChart _lineChart = default!;
+    private LineChartOptions _lineChartOptions = default!;
+    private ChartData _chartData = default!;
+
+    private DateOnly _dateFrom = DateOnly.FromDateTime(DateTime.Now);
+    private DateOnly _dateTo = DateOnly.FromDateTime(DateTime.Now);
+    private int _limit = 1000;
+    private string _error = string.Empty;
+
+    protected override Task OnInitializedAsync()
+    {
+        _lineChartOptions = new LineChartOptions
+        {
+            IndexAxis = "x",
+            Interaction = new Interaction { Mode = InteractionMode.Index, Intersect = false },
+            Responsive = true,
+        };
+
+        _lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "Energy Price", Display = true };
+
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await _lineChart.InitializeAsync(new ChartData { Datasets = [] }, _lineChartOptions);
+
+            }
+            catch (Exception e)
+            {
+                _error = e.Message;
+                return;
+            }
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task GetPseData()
+    {
+        try
+        {
+            EnergyPricesDataCs? result = await GetEnergyPricesDataCs();
+            if (result is not null)
+            {
+                await UpdateLineChart(result.value);
+            }
+        }
+        catch (Exception e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private async Task GetPseDataToJson()
+    {
+        try
+        {
+            var result = await GetEnergyPricesDataCs();
+            var jsonString = JsonConvert.SerializeObject(result, Formatting.Indented);
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonString));
+            using var streamRef = new DotNetStreamReference(stream: stream);
+            await JS.InvokeVoidAsync("downloadFileFromStream", $"{Endpoint}.json", streamRef);
+        }
+        catch (Exception e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private async Task<EnergyPricesDataCs?> GetEnergyPricesDataCs()
+    {
+        EnergyPricesDataCs? result = await PseHttpClient.GetFromJsonAsync<EnergyPricesDataCs>(
+            $"{Endpoint}?$first={_limit}&$filter={QueryParamBusinessDate}%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20{QueryParamBusinessDate}%20le%20'{_dateTo:yyyy-MM-dd}'");
+        return result;
+    }
+
+    private async Task UpdateLineChart(List<EnergyPricesDataCsValue> data)
+    {
+        var color = ColorUtility.CategoricalTwelveColors[0].ToColor();
+        _chartData = new ChartData
+            {
+                Labels = data.Select(d => d.dtime_utc.ToString(CultureInfo.CurrentCulture)).ToList(),
+                Datasets =
+                [
+                    new LineChartDataset
+                {
+                    Label = "Energy Price",
+                    Data = data.Select(d => d.price).ToList(),
+                    BackgroundColor = color.ToRgbaString(),
+                    BorderColor = color.ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                }
+                ]
+            };
+        await _lineChart.UpdateAsync(_chartData, _lineChartOptions);
+    }
+
+}
