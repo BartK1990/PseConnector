@@ -1,4 +1,4 @@
-@page "/pse-connector-energy-prices"
+﻿@page "/pse-connector-energy-prices"
 @using System.Globalization
 @using System.Text
 @using global::PseConnector.Web.Components
@@ -8,14 +8,13 @@
 @inject PseHttpClientService PseHttpClient
 
 <PageTitle>PSE Connector - Energy Prices</PageTitle>
+ 
+<h2> PSE - Ceny energii na rynku bilansującym (Energy Prices)</h2>
 
-<h2>PSE - Energy Prices</h2>
-
-<PseChartInput 
-@bind-DateFrom="@_dateFrom"
-@bind-DateTo="@_dateTo"
-@bind-Limit="@_limit"
-@bind-Error="@_error"/>
+<PseChartInput @bind-DateFrom="@_dateFrom"
+               @bind-DateTo="@_dateTo"
+               @bind-Limit="@_limit"
+               @bind-Error="@_error" />
 
 <div class="mb-3">
     <button class="btn btn-primary" @onclick="GetPseData">Pobierz dane</button>
@@ -111,23 +110,94 @@
 
     private async Task UpdateLineChart(List<EnergyPricesDataCsValue> data)
     {
-        var color = ColorUtility.CategoricalTwelveColors[0].ToColor();
         _chartData = new ChartData
-            {
-                Labels = data.Select(d => d.dtime_utc.ToString(CultureInfo.CurrentCulture)).ToList(),
-                Datasets =
+        {
+            Labels = data.Select(d => d.dtime_utc.ToString(CultureInfo.CurrentCulture)).ToList(),
+            Datasets =
                 [
-                    new LineChartDataset
+                new LineChartDataset
                 {
-                    Label = "Energy Price",
-                    Data = data.Select(d => d.price).ToList(),
-                    BackgroundColor = color.ToRgbaString(),
-                    BorderColor = color.ToRgbString(),
+                    Label = "COR",
+                    Data = data.Select(d => d.cor_cost).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString(),
                     PointRadius = [1],
                     PointHoverRadius = [3],
-                }
+                },
+                new LineChartDataset
+                {
+                    Label = "CEB PP",
+                    Data = data.Select(d => d.ceb_pp_cost).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "CEB SR",
+                    Data = data.Select(d => d.ceb_sr_cost).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[2].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[2].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "CEN",
+                    Data = data.Select(d => d.cen_cost).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "CSDAC PLN",
+                    Data = data.Select(d => d.csdac_pln).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[4].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[4].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "SK",
+                    Data = data.Select(d => d.sk_cost).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[5].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[5].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "Balance",
+                    Data = data.Select(d => d.balance).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[6].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[6].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "Balance Power",
+                    Data = data.Select(d => d.balance_power).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[7].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[7].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "SK Power",
+                    Data = data.Select(d => d.sk_cost_power).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[8].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[8].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
                 ]
-            };
+        };
         await _lineChart.UpdateAsync(_chartData, _lineChartOptions);
     }
 
