@@ -1,0 +1,204 @@
+﻿@page "/pse-connector-energy-prices"
+@using System.Globalization
+@using System.Text
+@using global::PseConnector.Web.Components
+@using Newtonsoft.Json
+@using PseConnector.Web.Models
+@inject IJSRuntime JS
+@inject PseHttpClientService PseHttpClient
+
+<PageTitle>PSE Connector - Energy Prices</PageTitle>
+ 
+<h2> PSE - Ceny energii na rynku bilansującym (Energy Prices)</h2>
+
+<PseChartInput @bind-DateFrom="@_dateFrom"
+               @bind-DateTo="@_dateTo"
+               @bind-Limit="@_limit"
+               @bind-Error="@_error" />
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="GetPseData">Pobierz dane</button>
+    <button class="btn btn-primary" @onclick="GetPseDataToJson">JSON</button>
+</div>
+
+<div class="container-fluid overflow-x-auto" style="float: left; max-width: 1200px;">
+    <LineChart @ref="_lineChart" />
+</div>
+
+@code {
+    private const string Endpoint = "energy-prices";
+    private const string QueryParamBusinessDate = "business_date";
+    private LineChart _lineChart = default!;
+    private LineChartOptions _lineChartOptions = default!;
+    private ChartData _chartData = default!;
+
+    private DateOnly _dateFrom = DateOnly.FromDateTime(DateTime.Now);
+    private DateOnly _dateTo = DateOnly.FromDateTime(DateTime.Now);
+    private int _limit = 1000;
+    private string _error = string.Empty;
+
+    protected override Task OnInitializedAsync()
+    {
+        _lineChartOptions = new LineChartOptions
+        {
+            IndexAxis = "x",
+            Interaction = new Interaction { Mode = InteractionMode.Index, Intersect = false },
+            Responsive = true,
+        };
+
+        _lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "Energy Price", Display = true };
+
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await _lineChart.InitializeAsync(new ChartData { Datasets = [] }, _lineChartOptions);
+
+            }
+            catch (Exception e)
+            {
+                _error = e.Message;
+                return;
+            }
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async Task GetPseData()
+    {
+        try
+        {
+            EnergyPricesDataCs? result = await GetEnergyPricesDataCs();
+            if (result is not null)
+            {
+                await UpdateLineChart(result.value);
+            }
+        }
+        catch (Exception e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private async Task GetPseDataToJson()
+    {
+        try
+        {
+            var result = await GetEnergyPricesDataCs();
+            var jsonString = JsonConvert.SerializeObject(result, Formatting.Indented);
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(jsonString));
+            using var streamRef = new DotNetStreamReference(stream: stream);
+            await JS.InvokeVoidAsync("downloadFileFromStream", $"{Endpoint}.json", streamRef);
+        }
+        catch (Exception e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private async Task<EnergyPricesDataCs?> GetEnergyPricesDataCs()
+    {
+        EnergyPricesDataCs? result = await PseHttpClient.GetFromJsonAsync<EnergyPricesDataCs>(
+            $"{Endpoint}?$first={_limit}&$filter={QueryParamBusinessDate}%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20{QueryParamBusinessDate}%20le%20'{_dateTo:yyyy-MM-dd}'");
+        return result;
+    }
+
+    private async Task UpdateLineChart(List<EnergyPricesDataCsValue> data)
+    {
+        _chartData = new ChartData
+        {
+            Labels = data.Select(d => d.dtime_utc.ToString(CultureInfo.CurrentCulture)).ToList(),
+            Datasets =
+                [
+                new LineChartDataset
+                {
+                    Label = "COR",
+                    Data = data.Select(d => d.cor_cost).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "CEB PP",
+                    Data = data.Select(d => d.ceb_pp_cost).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "CEB SR",
+                    Data = data.Select(d => d.ceb_sr_cost).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[2].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[2].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "CEN",
+                    Data = data.Select(d => d.cen_cost).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "CSDAC PLN",
+                    Data = data.Select(d => d.csdac_pln).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[4].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[4].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "SK",
+                    Data = data.Select(d => d.sk_cost).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[5].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[5].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "Balance",
+                    Data = data.Select(d => d.balance).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[6].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[6].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "Balance Power",
+                    Data = data.Select(d => d.balance_power).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[7].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[7].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                new LineChartDataset
+                {
+                    Label = "SK Power",
+                    Data = data.Select(d => d.sk_cost_power).ToList(),
+                    BackgroundColor = ColorUtility.CategoricalTwelveColors[8].ToColor().ToRgbString(),
+                    BorderColor = ColorUtility.CategoricalTwelveColors[8].ToColor().ToRgbString(),
+                    PointRadius = [1],
+                    PointHoverRadius = [3],
+                },
+                ]
+        };
+        await _lineChart.UpdateAsync(_chartData, _lineChartOptions);
+    }
+
+}
