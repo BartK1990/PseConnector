@@ -7,7 +7,7 @@ COPY PseConnector.Web/PseConnector.Web.csproj PseConnector.Web/
 COPY PseConnector.Data/PseConnector.Data.fsproj PseConnector.Data/
 COPY PseConnector.Console/PseConnector.Console.csproj PseConnector.Console/
 
-RUN dotnet restore PseConnector.sln
+RUN dotnet restore PseConnector.Web/PseConnector.Web.csproj
 
 COPY . .
 
