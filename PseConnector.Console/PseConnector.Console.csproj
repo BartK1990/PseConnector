@@ -7,8 +7,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\PseConnector.Data\PseConnector.Data.fsproj" />
-  </ItemGroup>
-
 </Project>
