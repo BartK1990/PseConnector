@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "PseConnector.Web",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "PseConnector.Web", "--urls", "http://localhost:5154"],
+      "port": 5154
+    }
+  ]
+}

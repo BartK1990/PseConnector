@@ -1,9 +1,8 @@
 ﻿@page "/pse-connector-energy-prices"
-@using System.Globalization
 @using System.Text
-@using global::PseConnector.Web.Components
 @using Newtonsoft.Json
 @using PseConnector.Web.Models
+@using global::PseConnector.Web.Components
 @inject IJSRuntime JS
 @inject PseHttpClientService PseHttpClient
 
@@ -13,7 +12,7 @@
 
 <PseChartInput @bind-DateFrom="@_dateFrom"
                @bind-DateTo="@_dateTo"
-               @bind-Limit="@_limit"
+               @bind-SamplesAmount="@_samplesAmount"
                @bind-Error="@_error" />
 
 <div class="mb-3">
@@ -34,7 +33,7 @@
 
     private DateOnly _dateFrom = DateOnly.FromDateTime(DateTime.Now);
     private DateOnly _dateTo = DateOnly.FromDateTime(DateTime.Now);
-    private int _limit = 1000;
+    private int _samplesAmount = -1;
     private string _error = string.Empty;
 
     protected override Task OnInitializedAsync()
@@ -58,7 +57,8 @@
             try
             {
                 await _lineChart.InitializeAsync(new ChartData { Datasets = [] }, _lineChartOptions);
-
+                await GetPseData();
+                StateHasChanged();
             }
             catch (Exception e)
             {
@@ -104,7 +104,7 @@
     private async Task<EnergyPricesDataCs?> GetEnergyPricesDataCs()
     {
         EnergyPricesDataCs? result = await PseHttpClient.GetFromJsonAsync<EnergyPricesDataCs>(
-            $"{Endpoint}?$first={_limit}&$filter={QueryParamBusinessDate}%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20{QueryParamBusinessDate}%20le%20'{_dateTo:yyyy-MM-dd}'");
+            $"{Endpoint}?$first={_samplesAmount}&$filter={QueryParamBusinessDate}%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20{QueryParamBusinessDate}%20le%20'{_dateTo:yyyy-MM-dd}'");
         return result;
     }
 
@@ -112,7 +112,7 @@
     {
         _chartData = new ChartData
         {
-            Labels = data.Select(d => d.dtime_utc.ToString(CultureInfo.CurrentCulture)).ToList(),
+            Labels = data.Select(d => PolandTime.ToLocalLabel(d.dtime_utc)).ToList(),
             Datasets =
                 [
                 new LineChartDataset

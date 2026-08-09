@@ -1,0 +1,313 @@
+@page "/rce-dashboard"
+@using PseConnector.Web.Models
+@using PseConnector.Web.Services
+@implements IDisposable
+@inject RceCacheService RceCache
+
+<PageTitle>PSE Connector - RCE-PLN Dashboard</PageTitle>
+
+<h2>PSE - RCE-PLN Dashboard</h2>
+
+<div class="mb-3" style="width: 200px;">
+    <DateInput TValue="DateOnly" @bind-Value="_selectedDate" @bind-Value:after="OnDateChanged" Placeholder="Data" />
+</div>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="mb-3"><span style="color: red;"><b>Error:</b> <i>@_error</i></span></div>
+}
+else if (_isLoading)
+{
+    <p><em>Ładowanie danych...</em></p>
+}
+else if (_data.Count == 0)
+{
+    <p><em>Brak danych dla wybranego dnia.</em></p>
+}
+else
+{
+    <div class="row g-3 mb-4" style="max-width: 900px;">
+        @if (_isToday)
+        {
+            <div class="col-6 col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h6 class="card-title">Cena teraz</h6>
+                        <p class="card-text fs-4 mb-1">@FormatPrice(_currentPrice)</p>
+                        <small class="text-muted">@_currentIntervalLabel</small>
+                    </div>
+                </div>
+            </div>
+        }
+        <div class="col-6 col-md-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h6 class="card-title">Najwyższa</h6>
+                    <p class="card-text fs-4 mb-0">@FormatPrice(_highest)</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h6 class="card-title">Najniższa</h6>
+                    <p class="card-text fs-4 mb-0">@FormatPrice(_lowest)</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center h-100" style="background-color: #fff3cd;">
+                <div class="card-body">
+                    <h6 class="card-title">Różnica</h6>
+                    <p class="card-text fs-4 mb-0">@FormatPrice(_highest - _lowest)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="container-fluid overflow-x-auto" style="float: left; max-width: 1200px;">
+    <LineChart @ref="_lineChart" />
+</div>
+
+@code {
+    private static readonly string CurrentPointColor = "rgb(255, 193, 7)";
+    private static readonly string HighestPointColor = "rgb(220, 53, 69)";
+    private static readonly string LowestPointColor = "rgb(13, 110, 253)";
+
+    private DateOnly _selectedDate = DateOnly.FromDateTime(DateTime.Now);
+    private bool _isToday = true;
+    private bool _isLoading = true;
+
+    private List<RcePlnDataCsValue> _data = [];
+    private LineChart _lineChart = default!;
+    private LineChartOptions _lineChartOptions = default!;
+
+    private int _currentIndex = -1;
+    private int _highestIndex = -1;
+    private int _lowestIndex = -1;
+    private double _currentPrice;
+    private double _highest;
+    private double _lowest;
+    private string _currentIntervalLabel = string.Empty;
+    private string _error = string.Empty;
+    private bool _pendingChartSync;
+    private System.Threading.Timer? _refreshTimer;
+
+    protected override Task OnInitializedAsync()
+    {
+        _lineChartOptions = new LineChartOptions
+        {
+            IndexAxis = "x",
+            Interaction = new Interaction { Mode = InteractionMode.Index, Intersect = false },
+            Responsive = true,
+        };
+
+        _lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "RCE-PLN", Display = true };
+
+        return LoadDataAsync(_selectedDate);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // _data may or may not be loaded yet at this point — LoadDataAsync
+                // runs concurrently with the first render. If it's not loaded yet,
+                // the pending-sync branch below picks it up once Blazor re-renders
+                // after that task completes.
+                await _lineChart.InitializeAsync(BuildChartData(), _lineChartOptions);
+                _pendingChartSync = false;
+                _refreshTimer = new System.Threading.Timer(
+                    _ => InvokeAsync(RefreshCurrentPrice),
+                    null,
+                    TimeSpan.FromMinutes(1),
+                    TimeSpan.FromMinutes(1));
+            }
+            catch (Exception e)
+            {
+                _error = e.Message;
+                return;
+            }
+        }
+        else if (_pendingChartSync)
+        {
+            _pendingChartSync = false;
+            await _lineChart.UpdateAsync(BuildChartData(), _lineChartOptions);
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private DateOnly? _lastLoadedDate;
+
+    private Task OnDateChanged()
+    {
+        // DateInput can re-notify with the same value on its own re-render;
+        // without this guard that turns into load -> render -> re-notify -> load...
+        if (_selectedDate == _lastLoadedDate)
+        {
+            return Task.CompletedTask;
+        }
+
+        return LoadDataAsync(_selectedDate);
+    }
+
+    private async Task LoadDataAsync(DateOnly date)
+    {
+        _lastLoadedDate = date;
+        _isLoading = true;
+        _error = string.Empty;
+        _data = [];
+        _highest = 0;
+        _lowest = 0;
+        _highestIndex = -1;
+        _lowestIndex = -1;
+        _currentIndex = -1;
+        _currentPrice = 0;
+        _currentIntervalLabel = string.Empty;
+        _isToday = date == DateOnly.FromDateTime(DateTime.Now);
+
+        try
+        {
+            _data = (await RceCache.GetDataForDateAsync(date))
+                .OrderBy(d => d.dtime_utc, StringComparer.Ordinal)
+                .ToList();
+
+            if (_data.Count > 0)
+            {
+                _highest = _data.Max(d => d.rce_pln);
+                _lowest = _data.Min(d => d.rce_pln);
+                _highestIndex = _data.FindIndex(d => d.rce_pln == _highest);
+                _lowestIndex = _data.FindIndex(d => d.rce_pln == _lowest);
+                if (_isToday)
+                {
+                    RecomputeCurrentPrice();
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+            _pendingChartSync = true;
+        }
+    }
+
+    private async Task RefreshCurrentPrice()
+    {
+        if (!_isToday || _data.Count == 0)
+        {
+            return;
+        }
+
+        RecomputeCurrentPrice();
+        await _lineChart.UpdateAsync(BuildChartData(), _lineChartOptions);
+        StateHasChanged();
+    }
+
+    private void RecomputeCurrentPrice()
+    {
+        if (_data.Count == 0)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        _currentIndex = _data.FindIndex(d => PolandTime.ParseUtc(d.dtime_utc) >= now);
+        if (_currentIndex < 0)
+        {
+            _currentIndex = _data.Count - 1;
+        }
+
+        var current = _data[_currentIndex];
+        _currentPrice = current.rce_pln;
+        _currentIntervalLabel = PolandTime.ToLocalLabel(current.dtime_utc);
+    }
+
+    private ChartData BuildChartData()
+    {
+        var seriesColor = ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString();
+
+        var pointColors = new List<string>(_data.Count);
+        var pointRadii = new List<double>(_data.Count);
+        var pointHoverRadii = new List<double>(_data.Count);
+        for (var i = 0; i < _data.Count; i++)
+        {
+            if (i == _currentIndex)
+            {
+                pointColors.Add(CurrentPointColor);
+                pointRadii.Add(7);
+            }
+            else if (i == _highestIndex)
+            {
+                pointColors.Add(HighestPointColor);
+                pointRadii.Add(6);
+            }
+            else if (i == _lowestIndex)
+            {
+                pointColors.Add(LowestPointColor);
+                pointRadii.Add(6);
+            }
+            else
+            {
+                pointColors.Add(seriesColor);
+                pointRadii.Add(1);
+            }
+            pointHoverRadii.Add(pointRadii[i] + 2);
+        }
+
+        var priceDataset = new LineChartDataset
+        {
+            Label = "RCE-PLN",
+            Data = _data.Select(d => (double?)d.rce_pln).ToList(),
+            BackgroundColor = seriesColor,
+            BorderColor = seriesColor,
+            PointBackgroundColor = pointColors,
+            PointBorderColor = pointColors,
+            PointRadius = pointRadii,
+            PointHoverRadius = pointHoverRadii,
+        };
+
+        var highestDataset = new LineChartDataset
+        {
+            Label = $"Najwyższa ({_highest:0.00})",
+            Data = Enumerable.Repeat((double?)_highest, _data.Count).ToList(),
+            BorderColor = HighestPointColor,
+            BackgroundColor = HighestPointColor,
+            BorderDash = [6, 4],
+            BorderWidth = 1,
+            PointRadius = [0],
+            PointHoverRadius = [0],
+        };
+
+        var lowestDataset = new LineChartDataset
+        {
+            Label = $"Najniższa ({_lowest:0.00})",
+            Data = Enumerable.Repeat((double?)_lowest, _data.Count).ToList(),
+            BorderColor = LowestPointColor,
+            BackgroundColor = LowestPointColor,
+            BorderDash = [6, 4],
+            BorderWidth = 1,
+            PointRadius = [0],
+            PointHoverRadius = [0],
+        };
+
+        return new ChartData
+        {
+            Labels = _data.Select(d => PolandTime.ToLocalLabel(d.dtime_utc)).ToList(),
+            Datasets = [priceDataset, highestDataset, lowestDataset],
+        };
+    }
+
+    private static string FormatPrice(double price) => $"{price:0.00} PLN/MWh";
+
+    public void Dispose()
+    {
+        _refreshTimer?.Dispose();
+    }
+}

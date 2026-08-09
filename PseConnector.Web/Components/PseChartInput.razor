@@ -5,11 +5,12 @@
     <div style="width: 200px;">
         <DateInput TValue="DateOnly" @bind-Value="@DateTo" @bind-Value:after="OnDateToChanged" Placeholder="Data" />
     </div>
-    <div style="width: 120px;">
-        <NumberInput TValue="int" @bind-Value="@Limit" @bind-Value:after="OnLimitChanged" Placeholder="Limit danych" />
+    <div style="width: 280px;">
+        <NumberInput TValue="int" AllowNegativeNumbers="true" @bind-Value="@SamplesAmount" @bind-Value:after="OnSamplesAmountChanged" Placeholder="Ilość próbek od daty początkowej" />
+        <small class="form-text text-muted text-nowrap">Zakres: 1–100000, lub -1 = bez limitu</small>
     </div>
 </div>
-<div class="mb-3">Wybrany zakres dat: <b>@DateFrom</b> - <b>@DateTo</b>; Limit: <b>@Limit</b></div>
+<div class="mb-3">Wybrany zakres dat: <b>@DateFrom</b> - <b>@DateTo</b>; Ilość próbek: <b>@SamplesAmount</b></div>
 
 @if (!string.IsNullOrEmpty(Error))
 {
@@ -25,9 +26,9 @@
     [Parameter] public EventCallback<DateOnly> DateToChanged { get; set; }
     public async Task OnDateToChanged() => await DateToChanged.InvokeAsync(DateTo);
 
-    [Parameter] public int Limit { get; set; }
-    [Parameter] public EventCallback<int> LimitChanged { get; set; }
-    public async Task OnLimitChanged() => await LimitChanged.InvokeAsync(Limit);
+    [Parameter] public int SamplesAmount { get; set; }
+    [Parameter] public EventCallback<int> SamplesAmountChanged { get; set; }
+    public async Task OnSamplesAmountChanged() => await SamplesAmountChanged.InvokeAsync(SamplesAmount);
 
     [Parameter] public string Error { get; set; } = string.Empty;
     [Parameter] public EventCallback<string> ErrorChanged { get; set; }

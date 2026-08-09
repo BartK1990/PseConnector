@@ -1,9 +1,8 @@
 ﻿@page "/pse-connector-rce"
-@using System.Globalization
 @using System.Text
-@using global::PseConnector.Web.Components
 @using Newtonsoft.Json
 @using PseConnector.Web.Models
+@using global::PseConnector.Web.Components
 @inject IJSRuntime JS
 @inject PseHttpClientService PseHttpClient
 
@@ -14,13 +13,43 @@
 <PseChartInput 
 @bind-DateFrom="@_dateFrom"
 @bind-DateTo="@_dateTo"
-@bind-Limit="@_limit"
+@bind-SamplesAmount="@_samplesAmount"
 @bind-Error="@_error"/>
 
 <div class="mb-3">
     <button class="btn btn-primary" @onclick="GetPseData">Pobierz dane</button>
     <button class="btn btn-primary" @onclick="GetPseDataToJson">JSON</button>
 </div>
+
+@if (_hasData)
+{
+    <div class="row g-3 mb-4" style="max-width: 700px;">
+        <div class="col-6 col-md-4">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h6 class="card-title">Najwyższa</h6>
+                    <p class="card-text fs-4 mb-0">@FormatPrice(_highest)</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h6 class="card-title">Najniższa</h6>
+                    <p class="card-text fs-4 mb-0">@FormatPrice(_lowest)</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4">
+            <div class="card text-center h-100" style="background-color: #fff3cd;">
+                <div class="card-body">
+                    <h6 class="card-title">Różnica</h6>
+                    <p class="card-text fs-4 mb-0">@FormatPrice(_highest - _lowest)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 <div class="container-fluid overflow-x-auto" style="float: left; max-width: 1200px;">
     <LineChart @ref="_lineChart" />
@@ -29,14 +58,21 @@
 @code {
     private const string Endpoint = "rce-pln";
     private const string QueryParamBusinessDate = "business_date";
+    private const string HighestPointColor = "rgb(220, 53, 69)";
+    private const string LowestPointColor = "rgb(13, 110, 253)";
+
     private LineChart _lineChart = default!;
     private LineChartOptions _lineChartOptions = default!;
     private ChartData _chartData = default!;
 
     private DateOnly _dateFrom = DateOnly.FromDateTime(DateTime.Now);
     private DateOnly _dateTo = DateOnly.FromDateTime(DateTime.Now);
-    private int _limit = 1000;
+    private int _samplesAmount = -1;
     private string _error = string.Empty;
+
+    private bool _hasData;
+    private double _highest;
+    private double _lowest;
 
     protected override Task OnInitializedAsync()
     {
@@ -59,7 +95,8 @@
             try
             {
                 await _lineChart.InitializeAsync(new ChartData { Datasets = [] }, _lineChartOptions);
-
+                await GetPseData();
+                StateHasChanged();
             }
             catch (Exception e)
             {
@@ -105,30 +142,94 @@
     private async Task<RcePlnDataCs?> GetRcePlnDataCs()
     {
         RcePlnDataCs? result = await PseHttpClient.GetFromJsonAsync<RcePlnDataCs>(
-            $"{Endpoint}?$first={_limit}&$filter={QueryParamBusinessDate}%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20{QueryParamBusinessDate}%20le%20'{_dateTo:yyyy-MM-dd}'");
+            $"{Endpoint}?$first={_samplesAmount}&$filter={QueryParamBusinessDate}%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20{QueryParamBusinessDate}%20le%20'{_dateTo:yyyy-MM-dd}'");
         return result;
     }
 
     private async Task UpdateLineChart(List<RcePlnDataCsValue> data)
     {
-        var color = ColorUtility.CategoricalTwelveColors[0].ToColor();
-        _chartData = new ChartData
+        var color = ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString();
+
+        if (data.Count == 0)
+        {
+            _hasData = false;
+            _chartData = new ChartData { Datasets = [] };
+            await _lineChart.UpdateAsync(_chartData, _lineChartOptions);
+            return;
+        }
+
+        _highest = data.Max(d => d.rce_pln);
+        _lowest = data.Min(d => d.rce_pln);
+        var highestIndex = data.FindIndex(d => d.rce_pln == _highest);
+        var lowestIndex = data.FindIndex(d => d.rce_pln == _lowest);
+        _hasData = true;
+
+        var pointColors = new List<string>(data.Count);
+        var pointRadii = new List<double>(data.Count);
+        var pointHoverRadii = new List<double>(data.Count);
+        for (var i = 0; i < data.Count; i++)
+        {
+            if (i == highestIndex)
             {
-                Labels = data.Select(d => d.dtime_utc.ToString(CultureInfo.CurrentCulture)).ToList(),
-                Datasets =
-                [
-                    new LineChartDataset
-                {
-                    Label = "RCE-PLN",
-                    Data = data.Select(d => (double?)d.rce_pln).ToList(),
-                    BackgroundColor = color.ToRgbaString(),
-                    BorderColor = color.ToRgbString(),
-                    PointRadius = [1],
-                    PointHoverRadius = [3],
-                }
-                ]
-            };
+                pointColors.Add(HighestPointColor);
+                pointRadii.Add(6);
+            }
+            else if (i == lowestIndex)
+            {
+                pointColors.Add(LowestPointColor);
+                pointRadii.Add(6);
+            }
+            else
+            {
+                pointColors.Add(color);
+                pointRadii.Add(1);
+            }
+            pointHoverRadii.Add(pointRadii[i] + 2);
+        }
+
+        var priceDataset = new LineChartDataset
+        {
+            Label = "RCE-PLN",
+            Data = data.Select(d => (double?)d.rce_pln).ToList(),
+            BackgroundColor = color,
+            BorderColor = color,
+            PointBackgroundColor = pointColors,
+            PointBorderColor = pointColors,
+            PointRadius = pointRadii,
+            PointHoverRadius = pointHoverRadii,
+        };
+
+        var highestDataset = new LineChartDataset
+        {
+            Label = $"Najwyższa ({_highest:0.00})",
+            Data = Enumerable.Repeat((double?)_highest, data.Count).ToList(),
+            BorderColor = HighestPointColor,
+            BackgroundColor = HighestPointColor,
+            BorderDash = [6, 4],
+            BorderWidth = 1,
+            PointRadius = [0],
+            PointHoverRadius = [0],
+        };
+
+        var lowestDataset = new LineChartDataset
+        {
+            Label = $"Najniższa ({_lowest:0.00})",
+            Data = Enumerable.Repeat((double?)_lowest, data.Count).ToList(),
+            BorderColor = LowestPointColor,
+            BackgroundColor = LowestPointColor,
+            BorderDash = [6, 4],
+            BorderWidth = 1,
+            PointRadius = [0],
+            PointHoverRadius = [0],
+        };
+
+        _chartData = new ChartData
+        {
+            Labels = data.Select(d => PolandTime.ToLocalLabel(d.dtime_utc)).ToList(),
+            Datasets = [priceDataset, highestDataset, lowestDataset],
+        };
         await _lineChart.UpdateAsync(_chartData, _lineChartOptions);
     }
 
+    private static string FormatPrice(double price) => $"{price:0.00} PLN/MWh";
 }
