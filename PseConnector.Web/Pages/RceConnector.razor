@@ -95,7 +95,8 @@
             try
             {
                 await _lineChart.InitializeAsync(new ChartData { Datasets = [] }, _lineChartOptions);
-
+                await GetPseData();
+                StateHasChanged();
             }
             catch (Exception e)
             {
