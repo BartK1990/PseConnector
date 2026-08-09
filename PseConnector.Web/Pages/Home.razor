@@ -1,14 +1,34 @@
-﻿@page "/"
+@page "/"
 
 <PageTitle>Home</PageTitle>
 
 <div class="container">
     <h1>PSE - Rynek energii na wykresach</h1>
-    <div class="links">
-        <NavLink href="/pse-connector-rce" class="btn btn-outline-primary">RCE</NavLink>
-        <NavLink href="/pse-connector-cmbp-tp" class="btn btn-outline-primary">CMBP TP</NavLink>
-        <NavLink href="/pse-connector-cmbu-tu" class="btn btn-outline-primary">CMBU TU</NavLink>
-        <NavLink href="/pse-connector-cmbp-tp" class="btn btn-outline-primary">Energy Prices</NavLink>
+    <div class="list-group mt-4" style="max-width: 700px;">
+        <NavLink href="rce-dashboard" class="list-group-item list-group-item-action">
+            <div class="fw-bold">RCE-PLN Dashboard</div>
+            <div class="text-muted">Aktualna cena RCE-PLN dla dzisiaj (lub wybranego dnia), wraz z najwyższą, najniższą wartością i różnicą oraz wykresem z zaznaczonymi punktami.</div>
+        </NavLink>
+        <NavLink href="pse-connector-rce" class="list-group-item list-group-item-action">
+            <div class="fw-bold">RCE-PLN</div>
+            <div class="text-muted">Rynkowa cena energii elektrycznej w wybranym zakresie dat, wraz z najwyższą, najniższą wartością i różnicą.</div>
+        </NavLink>
+        <NavLink href="pse-connector-cmbp-tp" class="list-group-item list-group-item-action">
+            <div class="fw-bold">CMBP-TP</div>
+            <div class="text-muted">Ceny mocy bilansujących nabytych w trybie podstawowym (FCR, aFRR, mFRR, RR).</div>
+        </NavLink>
+        <NavLink href="pse-connector-cmbu-tu" class="list-group-item list-group-item-action">
+            <div class="fw-bold">CMBU-TU</div>
+            <div class="text-muted">Ceny mocy bilansujących nabytych w trybie uzupełniającym.</div>
+        </NavLink>
+        <NavLink href="pse-connector-energy-prices" class="list-group-item list-group-item-action">
+            <div class="fw-bold">Energy Prices</div>
+            <div class="text-muted">Ceny energii na rynku bilansującym (COR, CEB, CEN, CSDAC i inne składniki).</div>
+        </NavLink>
+        <NavLink href="pse-connector-eb-rozl" class="list-group-item list-group-item-action">
+            <div class="fw-bold">EB-ROZL</div>
+            <div class="text-muted">Aktywowany wolumen energii bilansującej aFRR i mFRR, ze znakiem wskazującym kierunek (góra/dół).</div>
+        </NavLink>
     </div>
 </div>
 
@@ -17,14 +37,5 @@
         margin-top: 50px;
         margin-left: 10px;
         text-align: left;
-    }
-    .links {
-        margin-top: 20px;
-    }
-    .btn {
-        margin: 10px;
-        padding: 10px 20px;
-        font-size: 16px;
-        border-radius: 5px;
     }
 </style>

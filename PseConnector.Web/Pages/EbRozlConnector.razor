@@ -32,8 +32,8 @@
     private LineChartOptions _lineChartOptions = default!;
     private ChartData _chartData = default!;
 
-    private DateOnly _dateFrom = DateOnly.FromDateTime(DateTime.Now);
-    private DateOnly _dateTo = DateOnly.FromDateTime(DateTime.Now);
+    private DateOnly _dateFrom = DateOnly.FromDateTime(DateTime.Now.AddDays(-1));
+    private DateOnly _dateTo = DateOnly.FromDateTime(DateTime.Now.AddDays(-1));
     private int _samplesAmount = -1;
     private string _error = string.Empty;
 

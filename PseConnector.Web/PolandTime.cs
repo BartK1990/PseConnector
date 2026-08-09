@@ -16,7 +16,7 @@ public static class PolandTime
     public static DateTime ToLocal(string utcString) => ToLocal(ParseUtc(utcString));
 
     public static string ToLocalLabel(string utcString) =>
-        ToLocal(utcString).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+        ToLocal(utcString).ToString("MM-dd HH:mm", CultureInfo.InvariantCulture);
 
     private static TimeSpan GetUtcOffset(DateTime utc)
     {
