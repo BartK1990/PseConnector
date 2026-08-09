@@ -12,7 +12,7 @@
 
 <PseChartInput @bind-DateFrom="@_dateFrom"
                @bind-DateTo="@_dateTo"
-               @bind-Limit="@_limit"
+               @bind-SamplesAmount="@_samplesAmount"
                @bind-Error="@_error" />
 
 <div class="mb-3">
@@ -33,7 +33,7 @@
 
     private DateOnly _dateFrom = DateOnly.FromDateTime(DateTime.Now);
     private DateOnly _dateTo = DateOnly.FromDateTime(DateTime.Now);
-    private int _limit = 4000;
+    private int _samplesAmount = 4000;
     private string _error = string.Empty;
 
     protected override Task OnInitializedAsync()
@@ -84,7 +84,7 @@
     private async Task<JsonElement?> GetCmbuTuDataJson()
     {
         var url =
-            $"{Endpoint}?$first={_limit}&$filter={QueryParamBusinessDate}%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20{QueryParamBusinessDate}%20le%20'{_dateTo:yyyy-MM-dd}'";
+            $"{Endpoint}?$first={_samplesAmount}&$filter={QueryParamBusinessDate}%20ge%20'{_dateFrom:yyyy-MM-dd}'%20and%20{QueryParamBusinessDate}%20le%20'{_dateTo:yyyy-MM-dd}'";
 
         var result = await PseHttpClient.GetFromJsonAsync<JsonElement>(url);
         return result;
