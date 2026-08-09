@@ -33,7 +33,7 @@
 
     private DateOnly _dateFrom = DateOnly.FromDateTime(DateTime.Now);
     private DateOnly _dateTo = DateOnly.FromDateTime(DateTime.Now);
-    private int _samplesAmount = 4000;
+    private int _samplesAmount = -1;
     private string _error = string.Empty;
 
     protected override Task OnInitializedAsync()
