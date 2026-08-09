@@ -5,8 +5,9 @@
     <div style="width: 200px;">
         <DateInput TValue="DateOnly" @bind-Value="@DateTo" @bind-Value:after="OnDateToChanged" Placeholder="Data" />
     </div>
-    <div style="width: 120px;">
+    <div style="width: 160px;">
         <NumberInput TValue="int" @bind-Value="@SamplesAmount" @bind-Value:after="OnSamplesAmountChanged" Placeholder="Ilość próbek od daty początkowej" />
+        <small class="form-text text-muted">Zakres: 1–100000, lub -1 = bez limitu</small>
     </div>
 </div>
 <div class="mb-3">Wybrany zakres dat: <b>@DateFrom</b> - <b>@DateTo</b>; Ilość próbek: <b>@SamplesAmount</b></div>
