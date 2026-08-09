@@ -219,7 +219,7 @@ else
         }
 
         var now = DateTime.UtcNow;
-        _currentIndex = _data.FindIndex(d => ParseUtc(d.dtime_utc) >= now);
+        _currentIndex = _data.FindIndex(d => PolandTime.ParseUtc(d.dtime_utc) >= now);
         if (_currentIndex < 0)
         {
             _currentIndex = _data.Count - 1;
@@ -227,7 +227,7 @@ else
 
         var current = _data[_currentIndex];
         _currentPrice = current.rce_pln;
-        _currentIntervalLabel = ToPolandLocal(current.dtime_utc).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+        _currentIntervalLabel = PolandTime.ToLocalLabel(current.dtime_utc);
     }
 
     private ChartData BuildChartData()
@@ -300,33 +300,9 @@ else
 
         return new ChartData
         {
-            Labels = _data.Select(d => ToPolandLocal(d.dtime_utc).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)).ToList(),
+            Labels = _data.Select(d => PolandTime.ToLocalLabel(d.dtime_utc)).ToList(),
             Datasets = [priceDataset, highestDataset, lowestDataset],
         };
-    }
-
-    private static DateTime ParseUtc(string dtimeUtc) =>
-        DateTime.Parse(dtimeUtc, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
-
-    // PSE reports dtime_utc in UTC; PSE data is always displayed in Polish local
-    // time. Computed from the fixed EU DST rule (last Sunday of March/October,
-    // 01:00 UTC) rather than TimeZoneInfo, since Blazor WebAssembly's bundled
-    // ICU/timezone data isn't guaranteed across environments.
-    private static DateTime ToPolandLocal(string dtimeUtc) => ToPolandLocal(ParseUtc(dtimeUtc));
-
-    private static DateTime ToPolandLocal(DateTime utc) => utc + GetPolandUtcOffset(utc);
-
-    private static TimeSpan GetPolandUtcOffset(DateTime utc)
-    {
-        var dstStart = LastSundayOfMonthUtc(utc.Year, 3).AddHours(1);
-        var dstEnd = LastSundayOfMonthUtc(utc.Year, 10).AddHours(1);
-        return utc >= dstStart && utc < dstEnd ? TimeSpan.FromHours(2) : TimeSpan.FromHours(1);
-    }
-
-    private static DateTime LastSundayOfMonthUtc(int year, int month)
-    {
-        var lastDay = new DateTime(year, month, DateTime.DaysInMonth(year, month));
-        return lastDay.AddDays(-(int)lastDay.DayOfWeek);
     }
 
     private static string FormatPrice(double price) => $"{price:0.00} PLN/MWh";

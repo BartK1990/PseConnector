@@ -112,7 +112,7 @@
     {
         _chartData = new ChartData
         {
-            Labels = data.Select(d => d.dtime_utc.ToString(CultureInfo.CurrentCulture)).ToList(),
+            Labels = data.Select(d => PolandTime.ToLocalLabel(d.dtime_utc)).ToList(),
             Datasets =
             [
                 new LineChartDataset

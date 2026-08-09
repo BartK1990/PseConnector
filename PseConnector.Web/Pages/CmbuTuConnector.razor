@@ -123,7 +123,7 @@
             // Determine label (prefers dtime_utc, then business_date, else index)
             string label = null!;
             if (item.TryGetProperty("dtime_utc", out var dtu) && dtu.ValueKind == JsonValueKind.String)
-                label = dtu.GetString()!;
+                label = PolandTime.ToLocalLabel(dtu.GetString()!);
             else if (item.TryGetProperty("business_date", out var bd) && bd.ValueKind == JsonValueKind.String)
                 label = bd.GetString()!;
             else
