@@ -1,4 +1,4 @@
-﻿@page "/pse-connector-rce"
+@page "/pse-connector-rce"
 @using System.Text
 @using Newtonsoft.Json
 @using PseConnector.Web.Models
@@ -10,7 +10,7 @@
 
 <h2>PSE - Rynkowa cena energii elektrycznej (RCE-PLN)</h2>
 
-<PseChartInput 
+<PseChartInput
 @bind-DateFrom="@_dateFrom"
 @bind-DateTo="@_dateTo"
 @bind-SamplesAmount="@_samplesAmount"
@@ -51,9 +51,7 @@
     </div>
 }
 
-<div class="container-fluid overflow-x-auto" style="float: left; max-width: 1200px;">
-    <LineChart @ref="_lineChart" />
-</div>
+<PseLineChart @ref="_chart" YAxisTitle="RCE" IsLoading="_isLoading" />
 
 @code {
     private const string Endpoint = "rce-pln";
@@ -61,9 +59,7 @@
     private const string HighestPointColor = "rgb(220, 53, 69)";
     private const string LowestPointColor = "rgb(13, 110, 253)";
 
-    private LineChart _lineChart = default!;
-    private LineChartOptions _lineChartOptions = default!;
-    private ChartData _chartData = default!;
+    private PseLineChart _chart = default!;
 
     private DateOnly _dateFrom = DateOnly.FromDateTime(DateTime.Now);
     private DateOnly _dateTo = DateOnly.FromDateTime(DateTime.Now);
@@ -73,20 +69,7 @@
     private bool _hasData;
     private double _highest;
     private double _lowest;
-
-    protected override Task OnInitializedAsync()
-    {
-        _lineChartOptions = new LineChartOptions
-        {
-            IndexAxis = "x",
-            Interaction = new Interaction { Mode = InteractionMode.Index, Intersect = false },
-            Responsive = true,
-        };
-
-        _lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "RCE", Display = true };
-
-        return Task.CompletedTask;
-    }
+    private bool _isLoading = true;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -94,7 +77,6 @@
         {
             try
             {
-                await _lineChart.InitializeAsync(new ChartData { Datasets = [] }, _lineChartOptions);
                 await GetPseData();
                 StateHasChanged();
             }
@@ -109,17 +91,23 @@
 
     private async Task GetPseData()
     {
+        _isLoading = true;
+        StateHasChanged();
         try
         {
             RcePlnDataCs? result = await GetRcePlnDataCs();
             if (result is not null)
             {
-                await UpdateLineChart(result.value);
+                await UpdateChart(result.value);
             }
         }
         catch (Exception e)
         {
             _error = e.Message;
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 
@@ -146,15 +134,14 @@
         return result;
     }
 
-    private async Task UpdateLineChart(List<RcePlnDataCsValue> data)
+    private async Task UpdateChart(List<RcePlnDataCsValue> data)
     {
         var color = ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString();
 
         if (data.Count == 0)
         {
             _hasData = false;
-            _chartData = new ChartData { Datasets = [] };
-            await _lineChart.UpdateAsync(_chartData, _lineChartOptions);
+            await _chart.UpdateAsync(new PseChartData());
             return;
         }
 
@@ -187,48 +174,44 @@
             pointHoverRadii.Add(pointRadii[i] + 2);
         }
 
-        var priceDataset = new LineChartDataset
-        {
-            Label = "RCE-PLN",
-            Data = data.Select(d => (double?)d.rce_pln).ToList(),
-            BackgroundColor = color,
-            BorderColor = color,
-            PointBackgroundColor = pointColors,
-            PointBorderColor = pointColors,
-            PointRadius = pointRadii,
-            PointHoverRadius = pointHoverRadii,
-        };
-
-        var highestDataset = new LineChartDataset
-        {
-            Label = $"Najwyższa ({_highest:0.00})",
-            Data = Enumerable.Repeat((double?)_highest, data.Count).ToList(),
-            BorderColor = HighestPointColor,
-            BackgroundColor = HighestPointColor,
-            BorderDash = [6, 4],
-            BorderWidth = 1,
-            PointRadius = [0],
-            PointHoverRadius = [0],
-        };
-
-        var lowestDataset = new LineChartDataset
-        {
-            Label = $"Najniższa ({_lowest:0.00})",
-            Data = Enumerable.Repeat((double?)_lowest, data.Count).ToList(),
-            BorderColor = LowestPointColor,
-            BackgroundColor = LowestPointColor,
-            BorderDash = [6, 4],
-            BorderWidth = 1,
-            PointRadius = [0],
-            PointHoverRadius = [0],
-        };
-
-        _chartData = new ChartData
+        var chartData = new PseChartData
         {
             Labels = data.Select(d => PolandTime.ToLocalLabel(d.dtime_utc)).ToList(),
-            Datasets = [priceDataset, highestDataset, lowestDataset],
+            Series =
+            [
+                new PseChartSeries
+                {
+                    Label = "RCE-PLN",
+                    Data = data.Select(d => (double?)d.rce_pln).ToList(),
+                    Color = color,
+                    PointColors = pointColors,
+                    PointRadii = pointRadii,
+                    PointHoverRadii = pointHoverRadii,
+                },
+                new PseChartSeries
+                {
+                    Label = $"Najwyższa ({_highest:0.00})",
+                    Data = Enumerable.Repeat((double?)_highest, data.Count).ToList(),
+                    Color = HighestPointColor,
+                    BorderDash = [6, 4],
+                    BorderWidth = 1,
+                    PointRadius = 0,
+                    PointHoverRadius = 0,
+                },
+                new PseChartSeries
+                {
+                    Label = $"Najniższa ({_lowest:0.00})",
+                    Data = Enumerable.Repeat((double?)_lowest, data.Count).ToList(),
+                    Color = LowestPointColor,
+                    BorderDash = [6, 4],
+                    BorderWidth = 1,
+                    PointRadius = 0,
+                    PointHoverRadius = 0,
+                }
+            ]
         };
-        await _lineChart.UpdateAsync(_chartData, _lineChartOptions);
+
+        await _chart.UpdateAsync(chartData);
     }
 
     private static string FormatPrice(double price) => $"{price:0.00} PLN/MWh";

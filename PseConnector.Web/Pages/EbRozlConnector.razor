@@ -21,35 +21,18 @@
     <button class="btn btn-primary" @onclick="GetPseDataToJson">JSON</button>
 </div>
 
-<div class="container-fluid overflow-x-auto" style="float: left; max-width: 1200px;">
-    <LineChart @ref="_lineChart" />
-</div>
+<PseLineChart @ref="_chart" YAxisTitle="MW" IsLoading="_isLoading" />
 
 @code {
     private const string Endpoint = "eb-rozl";
     private const string QueryParamBusinessDate = "business_date";
-    private LineChart _lineChart = default!;
-    private LineChartOptions _lineChartOptions = default!;
-    private ChartData _chartData = default!;
+    private PseLineChart _chart = default!;
 
     private DateOnly _dateFrom = DateOnly.FromDateTime(DateTime.Now.AddDays(-1));
     private DateOnly _dateTo = DateOnly.FromDateTime(DateTime.Now.AddDays(-1));
     private int _samplesAmount = -1;
     private string _error = string.Empty;
-
-    protected override Task OnInitializedAsync()
-    {
-        _lineChartOptions = new LineChartOptions
-        {
-            IndexAxis = "x",
-            Interaction = new Interaction { Mode = InteractionMode.Index, Intersect = false },
-            Responsive = true,
-        };
-
-        _lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "MW", Display = true };
-
-        return Task.CompletedTask;
-    }
+    private bool _isLoading = true;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -57,7 +40,6 @@
         {
             try
             {
-                await _lineChart.InitializeAsync(new ChartData { Datasets = [] }, _lineChartOptions);
                 await GetPseData();
                 StateHasChanged();
             }
@@ -72,17 +54,23 @@
 
     private async Task GetPseData()
     {
+        _isLoading = true;
+        StateHasChanged();
         try
         {
             EbRozlDataCs? result = await GetEbRozlDataCs();
             if (result is not null)
             {
-                await UpdateLineChart(result.value);
+                await UpdateChart(result.value);
             }
         }
         catch (Exception e)
         {
             _error = e.Message;
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 
@@ -109,37 +97,31 @@
         return result;
     }
 
-    private async Task UpdateLineChart(List<EbRozlDataCsValue> data)
+    private async Task UpdateChart(List<EbRozlDataCsValue> data)
     {
         var afrrColor = ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString();
         var mfrrColor = ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString();
 
-        _chartData = new ChartData
+        var chartData = new PseChartData
         {
             Labels = data.Select(d => PolandTime.ToLocalLabel(d.dtime_utc)).ToList(),
-            Datasets =
+            Series =
             [
-                new LineChartDataset
+                new PseChartSeries
                 {
                     Label = "aFRR (netto)",
                     Data = data.Select(d => (double?)(d.eb_afrrg + d.eb_afrrd)).ToList(),
-                    BackgroundColor = afrrColor,
-                    BorderColor = afrrColor,
-                    PointRadius = [1],
-                    PointHoverRadius = [3],
+                    Color = afrrColor,
                 },
-                new LineChartDataset
+                new PseChartSeries
                 {
                     Label = "mFRR (netto)",
                     Data = data.Select(d => (double?)(d.eb_d_pp + d.eb_w_pp)).ToList(),
-                    BackgroundColor = mfrrColor,
-                    BorderColor = mfrrColor,
-                    PointRadius = [1],
-                    PointHoverRadius = [3],
+                    Color = mfrrColor,
                 }
             ]
         };
 
-        await _lineChart.UpdateAsync(_chartData, _lineChartOptions);
+        await _chart.UpdateAsync(chartData);
     }
 }

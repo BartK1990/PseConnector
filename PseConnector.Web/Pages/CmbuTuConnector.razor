@@ -1,4 +1,4 @@
-﻿@page "/pse-connector-cmbu-tu"
+@page "/pse-connector-cmbu-tu"
 @using System.Globalization
 @using System.Text
 @using System.Text.Json
@@ -20,33 +20,18 @@
     <button class="btn btn-primary" @onclick="GetPseDataToJson">JSON</button>
 </div>
 
-<div class="container-fluid overflow-x-auto" style="float: left; max-width: 1200px;">
-    <LineChart @ref="_lineChart" />
-</div>
+<PseLineChart @ref="_chart" YAxisTitle="CMBU-TU" IsLoading="_isLoading" />
 
 @code {
     private const string Endpoint = "cmbu-tu";
     private const string QueryParamBusinessDate = "business_date";
-    private LineChart _lineChart = default!;
-    private LineChartOptions _lineChartOptions = default!;
-    private ChartData _chartData = default!;
+    private PseLineChart _chart = default!;
 
     private DateOnly _dateFrom = DateOnly.FromDateTime(DateTime.Now);
     private DateOnly _dateTo = DateOnly.FromDateTime(DateTime.Now);
     private int _samplesAmount = -1;
     private string _error = string.Empty;
-
-    protected override Task OnInitializedAsync()
-    {
-        _lineChartOptions = new LineChartOptions
-        {
-            IndexAxis = "x",
-            Interaction = new Interaction { Mode = InteractionMode.Index, Intersect = false },
-            Responsive = true,
-        };
-        _lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "CMBU-TU", Display = true };
-        return Task.CompletedTask;
-    }
+    private bool _isLoading = true;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -54,7 +39,6 @@
         {
             try
             {
-                await _lineChart.InitializeAsync(new ChartData { Datasets = [] }, _lineChartOptions);
                 await GetPseData();
                 StateHasChanged();
             }
@@ -69,17 +53,23 @@
 
     private async Task GetPseData()
     {
+        _isLoading = true;
+        StateHasChanged();
         try
         {
             var doc = await GetCmbuTuDataJson();
             if (doc.HasValue)
             {
-                await UpdateLineChart(doc.Value);
+                await UpdateChart(doc.Value);
             }
         }
         catch (Exception e)
         {
             _error = e.Message;
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 
@@ -108,7 +98,7 @@
         }
     }
 
-    private async Task UpdateLineChart(JsonElement root)
+    private async Task UpdateChart(JsonElement root)
     {
         if (!root.TryGetProperty("value", out var valueArray) || valueArray.ValueKind != JsonValueKind.Array)
         {
@@ -156,7 +146,7 @@
             }
         }
 
-        var datasets = new List<IChartDataset>();
+        var series = new List<PseChartSeries>();
         int colorIndex = 0;
         foreach (var kvp in seriesData.OrderBy(k => k.Key))
         {
@@ -167,24 +157,21 @@
                 continue;
 
             var color = ColorUtility.CategoricalTwelveColors[colorIndex % ColorUtility.CategoricalTwelveColors.Length].ToColor().ToRgbString();
-            datasets.Add(new LineChartDataset
+            series.Add(new PseChartSeries
             {
                 Label = kvp.Key,
                 Data = kvp.Value.Select(v => double.IsNaN(v) ? (double?)null : v).ToList(),
-                BackgroundColor = color,
-                BorderColor = color,
-                PointRadius = [1],
-                PointHoverRadius = [3],
+                Color = color,
             });
             colorIndex++;
         }
 
-        _chartData = new ChartData
+        var chartData = new PseChartData
         {
             Labels = labels,
-            Datasets = datasets
+            Series = series
         };
 
-        await _lineChart.UpdateAsync(_chartData, _lineChartOptions);
+        await _chart.UpdateAsync(chartData);
     }
 }
