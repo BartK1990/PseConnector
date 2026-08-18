@@ -22,6 +22,7 @@
 </div>
 
 <PseLineChart @ref="_chart" YAxisTitle="MW" IsLoading="_isLoading" />
+<SeriesLegend Items="_legendItems" />
 
 @code {
     private const string Endpoint = "eb-rozl";
@@ -33,6 +34,24 @@
     private int _samplesAmount = -1;
     private string _error = string.Empty;
     private bool _isLoading = true;
+
+    private readonly List<SeriesLegendItem> _legendItems =
+    [
+        new()
+        {
+            Abbreviation = "aFRR",
+            FullName = "automatic Frequency Restoration Reserve",
+            Description = "Zsumowany wolumen energii bilansującej aktywowanej automatycznie w ramach rezerwy odbudowy częstotliwości (eb_afrrg + eb_afrrd). Dodatni = aktywacja w górę, ujemny = w dół.",
+            Colors = [ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString()],
+        },
+        new()
+        {
+            Abbreviation = "mFRR",
+            FullName = "manual Frequency Restoration Reserve",
+            Description = "Zsumowany wolumen energii bilansującej aktywowanej ręcznie w procesie podstawowym (eb_d_pp + eb_w_pp). Dodatni = aktywacja w górę, ujemny = w dół.",
+            Colors = [ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString()],
+        }
+    ];
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

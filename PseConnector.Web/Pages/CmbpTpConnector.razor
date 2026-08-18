@@ -9,6 +9,7 @@
 <PageTitle>PSE Connector - CMBP-TP</PageTitle>
 
 <h2>PSE - Ceny mocy bilansujących nabytych w trybie podstawowym (CMBP-TP)</h2>
+<p class="text-muted">Sufiks _D oznacza kierunek w dół (redukcja generacji/zwiększenie poboru), _G oznacza kierunek w górę.</p>
 
 <PseChartInput @bind-DateFrom="@_dateFrom"
                @bind-DateTo="@_dateTo"
@@ -21,6 +22,7 @@
 </div>
 
 <PseLineChart @ref="_chart" YAxisTitle="CMBP" IsLoading="_isLoading" />
+<SeriesLegend Items="_legendItems" />
 
 @code {
     private const string Endpoint = "cmbp-tp";
@@ -32,6 +34,38 @@
     private int _samplesAmount = -1;
     private string _error = string.Empty;
     private bool _isLoading = true;
+
+    private static readonly List<SeriesLegendItem> _legendItems =
+    [
+        new()
+        {
+            Abbreviation = "FCR",
+            FullName = "Frequency Containment Reserve",
+            Description = "Rezerwa mocy do pierwotnej regulacji częstotliwości — najszybciej reagująca rezerwa, utrzymująca równowagę systemu w pierwszych sekundach po zakłóceniu.",
+            Colors = [ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString(), ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString()],
+        },
+        new()
+        {
+            Abbreviation = "aFRR",
+            FullName = "automatic Frequency Restoration Reserve",
+            Description = "Rezerwa mocy do automatycznej regulacji wtórnej (odbudowy częstotliwości), uruchamiana automatycznie przez system PSE.",
+            Colors = [ColorUtility.CategoricalTwelveColors[2].ToColor().ToRgbString(), ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString()],
+        },
+        new()
+        {
+            Abbreviation = "mFRRd",
+            FullName = "manual Frequency Restoration Reserve",
+            Description = "Rezerwa mocy do ręcznej regulacji trójnej (odbudowy częstotliwości), uruchamianej decyzją operatora.",
+            Colors = [ColorUtility.CategoricalTwelveColors[4].ToColor().ToRgbString(), ColorUtility.CategoricalTwelveColors[5].ToColor().ToRgbString()],
+        },
+        new()
+        {
+            Abbreviation = "RR",
+            FullName = "Replacement Reserve",
+            Description = "Rezerwa zastępcza — uzupełnia i odtwarza rezerwy wyższych poziomów regulacji (FCR/aFRR/mFRR).",
+            Colors = [ColorUtility.CategoricalTwelveColors[6].ToColor().ToRgbString(), ColorUtility.CategoricalTwelveColors[7].ToColor().ToRgbString()],
+        }
+    ];
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

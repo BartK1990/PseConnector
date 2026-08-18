@@ -21,6 +21,7 @@
 </div>
 
 <PseLineChart @ref="_chart" YAxisTitle="Energy Price" IsLoading="_isLoading" />
+<SeriesLegend Items="_legendItems" />
 
 @code {
     private const string Endpoint = "energy-prices";
@@ -32,6 +33,71 @@
     private int _samplesAmount = -1;
     private string _error = string.Empty;
     private bool _isLoading = true;
+
+    private static readonly List<SeriesLegendItem> _legendItems =
+    [
+        new()
+        {
+            Abbreviation = "COR",
+            FullName = "Cena Rezerwy Operacyjnej",
+            Description = "Cena usługi rezerwy operacyjnej (operational reserve service price); sumowana z CKOEB daje CEB PP.",
+            Colors = [ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString()],
+        },
+        new()
+        {
+            Abbreviation = "CEB PP",
+            FullName = "Cena Energii Bilansującej aktywowanej Poza Platformą RR",
+            Description = "Ceny energii bilansującej (balancing energy price) aktywowanej poza platformą rezerwy zastępczej (RR); suma ceny krańcowej oferty (CKOEB) i ceny rezerwy operacyjnej (COR).",
+            Colors = [ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString()],
+        },
+        new()
+        {
+            Abbreviation = "CEB SR",
+            FullName = "Cena Energii Bilansującej",
+            Description = "Ceny energii bilansującej (balancing energy price) — wariant inny niż CEB PP.",
+            Colors = [ColorUtility.CategoricalTwelveColors[2].ToColor().ToRgbString()],
+        },
+        new()
+        {
+            Abbreviation = "CEN",
+            FullName = "Cena Niezbilansowania BPKD/BO",
+            Description = "Cena niezbilansowania (imbalance price) względem bieżącego planu koordynacyjnego dobowego swobodnie zbilansowanego (BPKD/BO); wyznaczana na podstawie CEB PP, CSDAC i stanu zakontraktowania (SK).",
+            Colors = [ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString()],
+        },
+        new()
+        {
+            Abbreviation = "CSDAC",
+            FullName = "Single Day-Ahead Coupling",
+            Description = "Cena jednolitego łączenia rynków dnia następnego (single day-ahead coupling price) w Europie, w PLN/MWh.",
+            Colors = [ColorUtility.CategoricalTwelveColors[4].ToColor().ToRgbString()],
+        },
+        new()
+        {
+            Abbreviation = "SK",
+            FullName = "Stan Zakontraktowania",
+            Description = "Zagregowany stan zakontraktowania uczestników rynku (aggregated Market Participants contracting); wykorzystywany m.in. przy wyznaczaniu CEN.",
+            Colors = [ColorUtility.CategoricalTwelveColors[5].ToColor().ToRgbString()],
+        },
+        new()
+        {
+            Abbreviation = "EN",
+            FullName = "Energia Niezbilansowania",
+            Description = "Ilość energii niezbilansowania (volume of imbalance energy) — wolumen rozliczany po cenie CEN.",
+            Colors = [ColorUtility.CategoricalTwelveColors[6].ToColor().ToRgbString()],
+        },
+        new()
+        {
+            Abbreviation = "EN Power",
+            Description = "Wariant mocowy EN (energii niezbilansowania).",
+            Colors = [ColorUtility.CategoricalTwelveColors[7].ToColor().ToRgbString()],
+        },
+        new()
+        {
+            Abbreviation = "SK Power",
+            Description = "Wariant mocowy wskaźnika SK (stanu zakontraktowania).",
+            Colors = [ColorUtility.CategoricalTwelveColors[8].ToColor().ToRgbString()],
+        }
+    ];
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -108,8 +174,8 @@
             ("CEN", d => d.cen_cost),
             ("CSDAC PLN", d => d.csdac_pln),
             ("SK", d => d.sk_cost),
-            ("Balance", d => d.balance),
-            ("Balance Power", d => d.balance_power),
+            ("EN", d => d.balance),
+            ("EN Power", d => d.balance_power),
             ("SK Power", d => d.sk_cost_power),
         ];
 

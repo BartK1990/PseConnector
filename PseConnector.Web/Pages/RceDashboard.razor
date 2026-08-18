@@ -68,11 +68,23 @@ else
 }
 
 <PseLineChart @ref="_chart" YAxisTitle="RCE-PLN" IsLoading="_isLoading" />
+<SeriesLegend Items="_legendItems" />
 
 @code {
     private static readonly string CurrentPointColor = "rgb(255, 193, 7)";
     private static readonly string HighestPointColor = "rgb(220, 53, 69)";
     private static readonly string LowestPointColor = "rgb(13, 110, 253)";
+
+    private readonly List<SeriesLegendItem> _legendItems =
+    [
+        new()
+        {
+            Abbreviation = "RCE-PLN",
+            FullName = "Rynkowa Cena Energii Elektrycznej",
+            Description = "Rozliczeniowa cena energii elektrycznej na rynku bilansującym w danym okresie rozliczeniowym (15 minut), wyrażona w PLN/MWh.",
+            Colors = [ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString()],
+        }
+    ];
 
     private DateOnly _selectedDate = DateOnly.FromDateTime(DateTime.Now);
     private bool _isToday = true;
