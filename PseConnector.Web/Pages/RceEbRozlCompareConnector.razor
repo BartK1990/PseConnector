@@ -9,7 +9,7 @@
 <PageTitle>PSE Connector - RCE-PLN vs EB-ROZL</PageTitle>
 
 <h2>PSE - Porównanie RCE-PLN i EB-ROZL</h2>
-<p class="text-muted">RCE-PLN na lewej osi, EB-ROZL na prawej osi. Wolumen netto EB-ROZL: aFRR = eb_afrrg + eb_afrrd, mFRR (proces podstawowy) = eb_d_pp + eb_w_pp. Kliknij legendę, aby pokazać tylko jedną serię.</p>
+<p class="text-muted">RCE-PLN na lewej osi, EB-ROZL na prawej osi. EB-ROZL to cztery niezależne szeregi czasowe (bez sumowania) — dodatni = aktywacja w górę, ujemny = w dół. Kliknij legendę, aby pokazać tylko jedną serię.</p>
 
 <PseChartInput
 @bind-DateFrom="@_dateFrom"
@@ -22,7 +22,7 @@
     <button class="btn btn-primary" @onclick="GetPseDataToJson">JSON</button>
 </div>
 
-<PseLineChart @ref="_chart" YAxisTitle="RCE-PLN [PLN/MWh]" Y1AxisTitle="EB-ROZL [MW]" IsLoading="_isLoading" />
+<PseLineChart @ref="_chart" YAxisTitle="RCE-PLN [PLN/MWh]" Y1AxisTitle="EB-ROZL [MWh]" IsLoading="_isLoading" />
 <SeriesLegend Items="_legendItems" />
 
 @code {
@@ -49,17 +49,36 @@
         },
         new()
         {
-            Abbreviation = "aFRR",
-            FullName = "automatic Frequency Restoration Reserve",
-            Description = "Zsumowany wolumen energii bilansującej aktywowanej automatycznie w ramach rezerwy odbudowy częstotliwości (eb_afrrg + eb_afrrd). Dodatni = aktywacja w górę, ujemny = w dół.",
+            Abbreviation = "EBᴺᴾᵃ⸁ᴿᴿᴳ",
+            FullName = "eb_afrrg",
+            Description = "Ilość energii bilansującej wynikającej z aktywacji aFRRg (automatic Frequency Restoration Reserve) na platformie aFRR.",
             Colors = [ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString()],
         },
         new()
         {
-            Abbreviation = "mFRR",
-            FullName = "manual Frequency Restoration Reserve",
-            Description = "Zsumowany wolumen energii bilansującej aktywowanej ręcznie w procesie podstawowym (eb_d_pp + eb_w_pp). Dodatni = aktywacja w górę, ujemny = w dół.",
+            Abbreviation = "EBᴺᴾᵃ⸁ᴿᴿᴰ",
+            FullName = "eb_afrrd",
+            Description = "Ilość energii bilansującej wynikającej z aktywacji aFRRd (automatic Frequency Restoration Reserve) na platformie aFRR.",
             Colors = [ColorUtility.CategoricalTwelveColors[2].ToColor().ToRgbString()],
+        },
+        new()
+        {
+            Abbreviation = "EBᵖᵖ",
+            FullName = "manual Frequency Restoration Reserve, proces podstawowy",
+            Description = "Ilość energii bilansującej aktywowanej poza europejskimi platformami wymiany energii bilansującej. To jest mFRR (manual Frequency Restoration Reserve) — ponieważ nie jest aktywowana automatycznie przez platformę aFRR, tylko ręcznie w procesie podstawowym (stąd \"pp\").",
+            Colors = [ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString(), ColorUtility.CategoricalTwelveColors[4].ToColor().ToRgbString()],
+        },
+        new()
+        {
+            Abbreviation = "eb_d_pp",
+            Description = "EBpp dostarczona.",
+            Colors = [ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString()],
+        },
+        new()
+        {
+            Abbreviation = "eb_w_pp",
+            Description = "EBpp odebrana.",
+            Colors = [ColorUtility.CategoricalTwelveColors[4].ToColor().ToRgbString()],
         }
     ];
 
@@ -142,8 +161,10 @@
             .ToList();
 
         var rceColor = ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString();
-        var afrrColor = ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString();
-        var mfrrColor = ColorUtility.CategoricalTwelveColors[2].ToColor().ToRgbString();
+        var afrrgColor = ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString();
+        var afrrdColor = ColorUtility.CategoricalTwelveColors[2].ToColor().ToRgbString();
+        var dPpColor = ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString();
+        var wPpColor = ColorUtility.CategoricalTwelveColors[4].ToColor().ToRgbString();
 
         var chartData = new PseChartData
         {
@@ -159,16 +180,30 @@
                 },
                 new PseChartSeries
                 {
-                    Label = "aFRR (netto)",
-                    Data = ebRozlData.Select(d => (double?)(d.eb_afrrg + d.eb_afrrd)).ToList(),
-                    Color = afrrColor,
+                    Label = "eb_afrrg",
+                    Data = ebRozlData.Select(d => (double?)d.eb_afrrg).ToList(),
+                    Color = afrrgColor,
                     AxisId = "y1",
                 },
                 new PseChartSeries
                 {
-                    Label = "mFRR (netto)",
-                    Data = ebRozlData.Select(d => (double?)(d.eb_d_pp + d.eb_w_pp)).ToList(),
-                    Color = mfrrColor,
+                    Label = "eb_afrrd",
+                    Data = ebRozlData.Select(d => (double?)d.eb_afrrd).ToList(),
+                    Color = afrrdColor,
+                    AxisId = "y1",
+                },
+                new PseChartSeries
+                {
+                    Label = "eb_d_pp",
+                    Data = ebRozlData.Select(d => (double?)d.eb_d_pp).ToList(),
+                    Color = dPpColor,
+                    AxisId = "y1",
+                },
+                new PseChartSeries
+                {
+                    Label = "eb_w_pp",
+                    Data = ebRozlData.Select(d => (double?)d.eb_w_pp).ToList(),
+                    Color = wPpColor,
                     AxisId = "y1",
                 }
             ]
