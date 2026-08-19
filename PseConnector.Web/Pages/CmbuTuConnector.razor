@@ -1,4 +1,4 @@
-﻿@page "/pse-connector-cmbu-tu"
+@page "/pse-connector-cmbu-tu"
 @using System.Globalization
 @using System.Text
 @using System.Text.Json
@@ -9,6 +9,7 @@
 <PageTitle>PSE Connector - CMBU-TU</PageTitle>
 
 <h2>PSE - Ceny mocy bilansujących nabytych w trybie uzupełniającym (CMBU-TU)</h2>
+<p class="text-muted">Sufiks _D oznacza kierunek w dół (redukcja generacji/zwiększenie poboru), _G oznacza kierunek w górę.</p>
 
 <PseChartInput @bind-DateFrom="@_dateFrom"
                @bind-DateTo="@_dateTo"
@@ -20,33 +21,50 @@
     <button class="btn btn-primary" @onclick="GetPseDataToJson">JSON</button>
 </div>
 
-<div class="container-fluid overflow-x-auto" style="float: left; max-width: 1200px;">
-    <LineChart @ref="_lineChart" />
-</div>
+<PseLineChart @ref="_chart" YAxisTitle="CMBU-TU" IsLoading="_isLoading" />
+<SeriesLegend Items="_legendItems" />
 
 @code {
     private const string Endpoint = "cmbu-tu";
     private const string QueryParamBusinessDate = "business_date";
-    private LineChart _lineChart = default!;
-    private LineChartOptions _lineChartOptions = default!;
-    private ChartData _chartData = default!;
+    private PseLineChart _chart = default!;
+
+    // Field names as returned by the PSE API are all lower-case; map the known
+    // ones to their conventional display casing (e.g. "aFRR", not "afrr").
+    // Fields not in this map (unknown/future PSE fields) fall back to the raw
+    // key, preserving the schema-agnostic behavior of this page.
+    private static readonly Dictionary<string, string> KnownLabels = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["fcr_d"] = "FCR_D",
+        ["fcr_g"] = "FCR_G",
+        ["afrr_d"] = "aFRR_D",
+        ["afrr_g"] = "aFRR_G",
+        ["mfrrd_d"] = "mFRRd_D",
+        ["mfrrd_g"] = "mFRRd_G",
+        ["rr_d"] = "RR_D",
+        ["rr_g"] = "RR_G",
+    };
+
+    // Concept each known field belongs to (field name with the _d/_g direction
+    // suffix stripped), in preferred display order. The legend is built from
+    // whichever concepts are actually present in a given day's response —
+    // since this page discovers series dynamically, a static color-to-series
+    // mapping would drift out of sync whenever PSE omits a field.
+    private static readonly (string Concept, string Abbreviation, string FullName, string Description)[] ConceptInfo =
+    [
+        ("fcr", "FCR", "Frequency Containment Reserve", "Rezerwa mocy do pierwotnej regulacji częstotliwości — najszybciej reagująca rezerwa, utrzymująca równowagę systemu w pierwszych sekundach po zakłóceniu."),
+        ("afrr", "aFRR", "automatic Frequency Restoration Reserve", "Rezerwa mocy do automatycznej regulacji wtórnej (odbudowy częstotliwości), uruchamiana automatycznie przez system PSE."),
+        ("mfrrd", "mFRRd", "manual Frequency Restoration Reserve", "Rezerwa mocy do ręcznej regulacji trójnej (odbudowy częstotliwości), uruchamianej decyzją operatora."),
+        ("rr", "RR", "Replacement Reserve", "Rezerwa zastępcza — uzupełnia i odtwarza rezerwy wyższych poziomów regulacji (FCR/aFRR/mFRR)."),
+    ];
+
+    private List<SeriesLegendItem> _legendItems = [];
 
     private DateOnly _dateFrom = DateOnly.FromDateTime(DateTime.Now);
     private DateOnly _dateTo = DateOnly.FromDateTime(DateTime.Now);
     private int _samplesAmount = -1;
     private string _error = string.Empty;
-
-    protected override Task OnInitializedAsync()
-    {
-        _lineChartOptions = new LineChartOptions
-        {
-            IndexAxis = "x",
-            Interaction = new Interaction { Mode = InteractionMode.Index, Intersect = false },
-            Responsive = true,
-        };
-        _lineChartOptions.Scales.Y!.Title = new ChartAxesTitle { Text = "CMBU-TU", Display = true };
-        return Task.CompletedTask;
-    }
+    private bool _isLoading = true;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -54,7 +72,6 @@
         {
             try
             {
-                await _lineChart.InitializeAsync(new ChartData { Datasets = [] }, _lineChartOptions);
                 await GetPseData();
                 StateHasChanged();
             }
@@ -69,17 +86,23 @@
 
     private async Task GetPseData()
     {
+        _isLoading = true;
+        StateHasChanged();
         try
         {
             var doc = await GetCmbuTuDataJson();
             if (doc.HasValue)
             {
-                await UpdateLineChart(doc.Value);
+                await UpdateChart(doc.Value);
             }
         }
         catch (Exception e)
         {
             _error = e.Message;
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 
@@ -108,7 +131,7 @@
         }
     }
 
-    private async Task UpdateLineChart(JsonElement root)
+    private async Task UpdateChart(JsonElement root)
     {
         if (!root.TryGetProperty("value", out var valueArray) || valueArray.ValueKind != JsonValueKind.Array)
         {
@@ -156,7 +179,8 @@
             }
         }
 
-        var datasets = new List<IChartDataset>();
+        var series = new List<PseChartSeries>();
+        var conceptColors = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         int colorIndex = 0;
         foreach (var kvp in seriesData.OrderBy(k => k.Key))
         {
@@ -167,24 +191,42 @@
                 continue;
 
             var color = ColorUtility.CategoricalTwelveColors[colorIndex % ColorUtility.CategoricalTwelveColors.Length].ToColor().ToRgbString();
-            datasets.Add(new LineChartDataset
+            series.Add(new PseChartSeries
             {
-                Label = kvp.Key,
+                Label = KnownLabels.TryGetValue(kvp.Key, out var knownLabel) ? knownLabel : kvp.Key,
                 Data = kvp.Value.Select(v => double.IsNaN(v) ? (double?)null : v).ToList(),
-                BackgroundColor = color,
-                BorderColor = color,
-                PointRadius = [1],
-                PointHoverRadius = [3],
+                Color = color,
             });
             colorIndex++;
+
+            var concept = kvp.Key.EndsWith("_d", StringComparison.OrdinalIgnoreCase) || kvp.Key.EndsWith("_g", StringComparison.OrdinalIgnoreCase)
+                ? kvp.Key[..^2]
+                : kvp.Key;
+            if (!conceptColors.TryGetValue(concept, out var colors))
+            {
+                colors = [];
+                conceptColors[concept] = colors;
+            }
+            colors.Add(color);
         }
 
-        _chartData = new ChartData
+        var chartData = new PseChartData
         {
             Labels = labels,
-            Datasets = datasets
+            Series = series
         };
 
-        await _lineChart.UpdateAsync(_chartData, _lineChartOptions);
+        await _chart.UpdateAsync(chartData);
+
+        _legendItems = ConceptInfo
+            .Where(c => conceptColors.ContainsKey(c.Concept))
+            .Select(c => new SeriesLegendItem
+            {
+                Abbreviation = c.Abbreviation,
+                FullName = c.FullName,
+                Description = c.Description,
+                Colors = conceptColors[c.Concept],
+            })
+            .ToList();
     }
 }

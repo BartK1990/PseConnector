@@ -1,0 +1,33 @@
+@if (Items is { Count: > 0 })
+{
+    <div style="clear: both; max-width: 1200px; padding-top: 32px;" class="mb-4">
+        <ul class="list-unstyled mb-0">
+            @foreach (var item in Items)
+            {
+                <li class="d-flex align-items-start mb-2">
+                    @if (item.Colors.Count > 0)
+                    {
+                        <span style="display: inline-flex; gap: 3px; margin-top: 5px; margin-right: 8px; flex-shrink: 0;">
+                            @foreach (var color in item.Colors)
+                            {
+                                <span style="display: inline-block; width: 12px; height: 12px; border-radius: 2px; background-color: @color;"></span>
+                            }
+                        </span>
+                    }
+                    <span>
+                        <strong>@item.Abbreviation</strong>
+                        @if (!string.IsNullOrEmpty(item.FullName))
+                        {
+                            @: (@item.FullName)
+                        }
+                        — @item.Description
+                    </span>
+                </li>
+            }
+        </ul>
+    </div>
+}
+
+@code {
+    [Parameter] public List<SeriesLegendItem> Items { get; set; } = [];
+}
