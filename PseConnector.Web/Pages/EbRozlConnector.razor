@@ -9,7 +9,7 @@
 <PageTitle>PSE Connector - EB-ROZL</PageTitle>
 
 <h2>PSE - Aktywowana energia bilansująca (aFRR / mFRR)</h2>
-<p class="text-muted">Wolumen netto: aFRR = eb_afrrg + eb_afrrd, mFRR (proces podstawowy) = eb_d_pp + eb_w_pp. Dodatni = góra, ujemny = dół. Kliknij legendę, aby pokazać tylko jedną serię.</p>
+<p class="text-muted">Cztery niezależne szeregi czasowe (bez sumowania). Dodatni = aktywacja w górę, ujemny = w dół. Kliknij legendę, aby pokazać tylko jedną serię.</p>
 
 <PseChartInput @bind-DateFrom="@_dateFrom"
                @bind-DateTo="@_dateTo"
@@ -21,7 +21,7 @@
     <button class="btn btn-primary" @onclick="GetPseDataToJson">JSON</button>
 </div>
 
-<PseLineChart @ref="_chart" YAxisTitle="MW" IsLoading="_isLoading" />
+<PseLineChart @ref="_chart" YAxisTitle="MWh" IsLoading="_isLoading" />
 <SeriesLegend Items="_legendItems" />
 
 @code {
@@ -39,17 +39,39 @@
     [
         new()
         {
-            Abbreviation = "aFRR",
-            FullName = "automatic Frequency Restoration Reserve",
-            Description = "Zsumowany wolumen energii bilansującej aktywowanej automatycznie w ramach rezerwy odbudowy częstotliwości (eb_afrrg + eb_afrrd). Dodatni = aktywacja w górę, ujemny = w dół.",
+            Abbreviation = "EBᴺᴾᵃ⸁ᴿᴿᴳ",
+            FullName = "eb_afrrg",
+            Description = "Ilość energii bilansującej wynikającej z aktywacji aFRRg (automatic Frequency Restoration Reserve) na platformie aFRR.",
             Colors = [ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString()],
         },
         new()
         {
-            Abbreviation = "mFRR",
-            FullName = "manual Frequency Restoration Reserve",
-            Description = "Zsumowany wolumen energii bilansującej aktywowanej ręcznie w procesie podstawowym (eb_d_pp + eb_w_pp). Dodatni = aktywacja w górę, ujemny = w dół.",
+            Abbreviation = "EBᴺᴾᵃ⸁ᴿᴿᴰ",
+            FullName = "eb_afrrd",
+            Description = "Ilość energii bilansującej wynikającej z aktywacji aFRRd (automatic Frequency Restoration Reserve) na platformie aFRR.",
             Colors = [ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString()],
+        },
+        new()
+        {
+            Abbreviation = "EBᵖᵖ",
+            FullName = "Energia Bilansująca, proces podstawowy / mFRR (manual Frequency Restoration Reserve)",
+            Description = "Ilość energii bilansującej aktywowanej poza europejskimi platformami wymiany energii bilansującej.",
+            Colors = [ColorUtility.CategoricalTwelveColors[2].ToColor().ToRgbString(), ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString()],
+            Children =
+            [
+                new()
+                {
+                    Abbreviation = "eb_d_pp",
+                    Description = "EBpp dostarczona.",
+                    Colors = [ColorUtility.CategoricalTwelveColors[2].ToColor().ToRgbString()],
+                },
+                new()
+                {
+                    Abbreviation = "eb_w_pp",
+                    Description = "EBpp odebrana.",
+                    Colors = [ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString()],
+                }
+            ],
         }
     ];
 
@@ -118,8 +140,10 @@
 
     private async Task UpdateChart(List<EbRozlDataCsValue> data)
     {
-        var afrrColor = ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString();
-        var mfrrColor = ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString();
+        var afrrgColor = ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString();
+        var afrrdColor = ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString();
+        var dPpColor = ColorUtility.CategoricalTwelveColors[2].ToColor().ToRgbString();
+        var wPpColor = ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString();
 
         var chartData = new PseChartData
         {
@@ -128,15 +152,27 @@
             [
                 new PseChartSeries
                 {
-                    Label = "aFRR (netto)",
-                    Data = data.Select(d => (double?)(d.eb_afrrg + d.eb_afrrd)).ToList(),
-                    Color = afrrColor,
+                    Label = "eb_afrrg",
+                    Data = data.Select(d => (double?)d.eb_afrrg).ToList(),
+                    Color = afrrgColor,
                 },
                 new PseChartSeries
                 {
-                    Label = "mFRR (netto)",
-                    Data = data.Select(d => (double?)(d.eb_d_pp + d.eb_w_pp)).ToList(),
-                    Color = mfrrColor,
+                    Label = "eb_afrrd",
+                    Data = data.Select(d => (double?)d.eb_afrrd).ToList(),
+                    Color = afrrdColor,
+                },
+                new PseChartSeries
+                {
+                    Label = "eb_d_pp",
+                    Data = data.Select(d => (double?)d.eb_d_pp).ToList(),
+                    Color = dPpColor,
+                },
+                new PseChartSeries
+                {
+                    Label = "eb_w_pp",
+                    Data = data.Select(d => (double?)d.eb_w_pp).ToList(),
+                    Color = wPpColor,
                 }
             ]
         };

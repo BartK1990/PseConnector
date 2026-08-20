@@ -35,6 +35,9 @@
     private string _error = string.Empty;
     private bool _isLoading = true;
 
+    private const string DirectionDownDescription = "Kierunek w dół (redukcja generacji / zwiększenie poboru).";
+    private const string DirectionUpDescription = "Kierunek w górę (zwiększenie generacji / redukcja poboru).";
+
     private static readonly List<SeriesLegendItem> _legendItems =
     [
         new()
@@ -43,6 +46,11 @@
             FullName = "Frequency Containment Reserve",
             Description = "Rezerwa mocy do pierwotnej regulacji częstotliwości — najszybciej reagująca rezerwa, utrzymująca równowagę systemu w pierwszych sekundach po zakłóceniu.",
             Colors = [ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString(), ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString()],
+            Children =
+            [
+                new() { Abbreviation = "FCR_D", Description = DirectionDownDescription, Colors = [ColorUtility.CategoricalTwelveColors[0].ToColor().ToRgbString()] },
+                new() { Abbreviation = "FCR_G", Description = DirectionUpDescription, Colors = [ColorUtility.CategoricalTwelveColors[1].ToColor().ToRgbString()] },
+            ],
         },
         new()
         {
@@ -50,6 +58,11 @@
             FullName = "automatic Frequency Restoration Reserve",
             Description = "Rezerwa mocy do automatycznej regulacji wtórnej (odbudowy częstotliwości), uruchamiana automatycznie przez system PSE.",
             Colors = [ColorUtility.CategoricalTwelveColors[2].ToColor().ToRgbString(), ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString()],
+            Children =
+            [
+                new() { Abbreviation = "aFRR_D", Description = DirectionDownDescription, Colors = [ColorUtility.CategoricalTwelveColors[2].ToColor().ToRgbString()] },
+                new() { Abbreviation = "aFRR_G", Description = DirectionUpDescription, Colors = [ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString()] },
+            ],
         },
         new()
         {
@@ -57,6 +70,11 @@
             FullName = "manual Frequency Restoration Reserve",
             Description = "Rezerwa mocy do ręcznej regulacji trójnej (odbudowy częstotliwości), uruchamianej decyzją operatora.",
             Colors = [ColorUtility.CategoricalTwelveColors[4].ToColor().ToRgbString(), ColorUtility.CategoricalTwelveColors[5].ToColor().ToRgbString()],
+            Children =
+            [
+                new() { Abbreviation = "mFRRd_D", Description = DirectionDownDescription, Colors = [ColorUtility.CategoricalTwelveColors[4].ToColor().ToRgbString()] },
+                new() { Abbreviation = "mFRRd_G", Description = DirectionUpDescription, Colors = [ColorUtility.CategoricalTwelveColors[5].ToColor().ToRgbString()] },
+            ],
         },
         new()
         {
@@ -64,6 +82,11 @@
             FullName = "Replacement Reserve",
             Description = "Rezerwa zastępcza — uzupełnia i odtwarza rezerwy wyższych poziomów regulacji (FCR/aFRR/mFRR).",
             Colors = [ColorUtility.CategoricalTwelveColors[6].ToColor().ToRgbString(), ColorUtility.CategoricalTwelveColors[7].ToColor().ToRgbString()],
+            Children =
+            [
+                new() { Abbreviation = "RR_D", Description = DirectionDownDescription, Colors = [ColorUtility.CategoricalTwelveColors[6].ToColor().ToRgbString()] },
+                new() { Abbreviation = "RR_G", Description = DirectionUpDescription, Colors = [ColorUtility.CategoricalTwelveColors[7].ToColor().ToRgbString()] },
+            ],
         }
     ];
 
