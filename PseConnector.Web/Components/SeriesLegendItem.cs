@@ -8,4 +8,7 @@ public class SeriesLegendItem
 
     /// <summary>One swatch per color; e.g. two colors when the item summarizes a pair of chart series (like a _D/_G direction pair).</summary>
     public List<string> Colors { get; set; } = [];
+
+    /// <summary>The individual chart series that make up this item, shown indented beneath it (e.g. the _D/_G pair behind a combined series).</summary>
+    public List<SeriesLegendItem> Children { get; set; } = [];
 }

@@ -64,21 +64,24 @@
         new()
         {
             Abbreviation = "EBᵖᵖ",
-            FullName = "manual Frequency Restoration Reserve, proces podstawowy",
-            Description = "Ilość energii bilansującej aktywowanej poza europejskimi platformami wymiany energii bilansującej. To jest mFRR (manual Frequency Restoration Reserve) — ponieważ nie jest aktywowana automatycznie przez platformę aFRR, tylko ręcznie w procesie podstawowym (stąd \"pp\").",
+            FullName = "Energia Bilansująca, proces podstawowy / mFRR (manual Frequency Restoration Reserve)",
+            Description = "Ilość energii bilansującej aktywowanej poza europejskimi platformami wymiany energii bilansującej.",
             Colors = [ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString(), ColorUtility.CategoricalTwelveColors[4].ToColor().ToRgbString()],
-        },
-        new()
-        {
-            Abbreviation = "eb_d_pp",
-            Description = "EBpp dostarczona.",
-            Colors = [ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString()],
-        },
-        new()
-        {
-            Abbreviation = "eb_w_pp",
-            Description = "EBpp odebrana.",
-            Colors = [ColorUtility.CategoricalTwelveColors[4].ToColor().ToRgbString()],
+            Children =
+            [
+                new()
+                {
+                    Abbreviation = "eb_d_pp",
+                    Description = "EBpp dostarczona.",
+                    Colors = [ColorUtility.CategoricalTwelveColors[3].ToColor().ToRgbString()],
+                },
+                new()
+                {
+                    Abbreviation = "eb_w_pp",
+                    Description = "EBpp odebrana.",
+                    Colors = [ColorUtility.CategoricalTwelveColors[4].ToColor().ToRgbString()],
+                }
+            ],
         }
     ];
 

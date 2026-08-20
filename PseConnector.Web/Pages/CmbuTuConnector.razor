@@ -58,6 +58,9 @@
         ("rr", "RR", "Replacement Reserve", "Rezerwa zastępcza — uzupełnia i odtwarza rezerwy wyższych poziomów regulacji (FCR/aFRR/mFRR)."),
     ];
 
+    private const string DirectionDownDescription = "Kierunek w dół (redukcja generacji / zwiększenie poboru).";
+    private const string DirectionUpDescription = "Kierunek w górę (zwiększenie generacji / redukcja poboru).";
+
     private List<SeriesLegendItem> _legendItems = [];
 
     private DateOnly _dateFrom = DateOnly.FromDateTime(DateTime.Now);
@@ -180,7 +183,7 @@
         }
 
         var series = new List<PseChartSeries>();
-        var conceptColors = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var conceptChildren = new Dictionary<string, List<SeriesLegendItem>>(StringComparer.OrdinalIgnoreCase);
         int colorIndex = 0;
         foreach (var kvp in seriesData.OrderBy(k => k.Key))
         {
@@ -191,9 +194,10 @@
                 continue;
 
             var color = ColorUtility.CategoricalTwelveColors[colorIndex % ColorUtility.CategoricalTwelveColors.Length].ToColor().ToRgbString();
+            var label = KnownLabels.TryGetValue(kvp.Key, out var knownLabel) ? knownLabel : kvp.Key;
             series.Add(new PseChartSeries
             {
-                Label = KnownLabels.TryGetValue(kvp.Key, out var knownLabel) ? knownLabel : kvp.Key,
+                Label = label,
                 Data = kvp.Value.Select(v => double.IsNaN(v) ? (double?)null : v).ToList(),
                 Color = color,
             });
@@ -202,12 +206,17 @@
             var concept = kvp.Key.EndsWith("_d", StringComparison.OrdinalIgnoreCase) || kvp.Key.EndsWith("_g", StringComparison.OrdinalIgnoreCase)
                 ? kvp.Key[..^2]
                 : kvp.Key;
-            if (!conceptColors.TryGetValue(concept, out var colors))
+            if (!conceptChildren.TryGetValue(concept, out var children))
             {
-                colors = [];
-                conceptColors[concept] = colors;
+                children = [];
+                conceptChildren[concept] = children;
             }
-            colors.Add(color);
+            var direction = kvp.Key.EndsWith("_d", StringComparison.OrdinalIgnoreCase)
+                ? DirectionDownDescription
+                : kvp.Key.EndsWith("_g", StringComparison.OrdinalIgnoreCase)
+                    ? DirectionUpDescription
+                    : "";
+            children.Add(new SeriesLegendItem { Abbreviation = label, Description = direction, Colors = [color] });
         }
 
         var chartData = new PseChartData
@@ -219,13 +228,14 @@
         await _chart.UpdateAsync(chartData);
 
         _legendItems = ConceptInfo
-            .Where(c => conceptColors.ContainsKey(c.Concept))
+            .Where(c => conceptChildren.ContainsKey(c.Concept))
             .Select(c => new SeriesLegendItem
             {
                 Abbreviation = c.Abbreviation,
                 FullName = c.FullName,
                 Description = c.Description,
-                Colors = conceptColors[c.Concept],
+                Colors = conceptChildren[c.Concept].Select(child => child.Colors[0]).ToList(),
+                Children = conceptChildren[c.Concept],
             })
             .ToList();
     }
